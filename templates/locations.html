@@ -1,0 +1,353 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>RaceBot — Posizioni {{ race.name }}</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: system-ui, sans-serif; background: #f4f6fb; }
+
+    /* ── HEADER ── */
+    header {
+      background: linear-gradient(135deg, #1e40af 0%, #2563eb 100%);
+      padding: 0 28px; height: 60px;
+      display: flex; align-items: center; justify-content: space-between;
+      box-shadow: 0 2px 12px rgba(37,99,235,0.25);
+    }
+    .header-left { display: flex; align-items: center; gap: 12px; }
+    .header-back {
+      color: rgba(255,255,255,0.8); text-decoration: none; font-size: 13px;
+      padding: 6px 12px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.25);
+      background: rgba(255,255,255,0.1); transition: background 0.15s;
+    }
+    .header-back:hover { background: rgba(255,255,255,0.2); color: white; }
+    .header-title { font-size: 15px; font-weight: 700; color: white; }
+    .header-subtitle { font-size: 11px; color: rgba(255,255,255,0.65); margin-top: 1px; }
+    .header-nav { display: flex; align-items: center; gap: 4px; }
+    .header-nav a {
+      color: rgba(255,255,255,0.8); text-decoration: none; font-size: 13px;
+      padding: 6px 12px; border-radius: 8px; transition: background 0.15s;
+    }
+    .header-nav a:hover { background: rgba(255,255,255,0.15); color: white; }
+    .header-nav .logout { color: rgba(255,255,255,0.5); }
+
+    .container { max-width: 1100px; margin: 28px auto; padding: 0 20px; }
+    .top-grid { display: grid; grid-template-columns: 340px 1fr; gap: 20px; margin-bottom: 20px; }
+    .card { background: white; border-radius: 12px; padding: 22px; box-shadow: 0 2px 10px rgba(0,0,0,0.06); }
+
+    h2 { font-size: 16px; color: #111827; margin-bottom: 14px; font-weight: 700; }
+    h3 { font-size: 14px; color: #374151; font-weight: 600; margin-bottom: 10px; }
+    label { display: block; font-size: 13px; font-weight: 500; color: #374151; margin-bottom: 4px; margin-top: 10px; }
+    input, select, textarea { width: 100%; padding: 8px 11px; border: 1px solid #d1d5db; border-radius: 7px; font-size: 13px; font-family: inherit; }
+    input:focus, select:focus, textarea:focus { outline: none; border-color: #2563eb; }
+    textarea { resize: vertical; min-height: 60px; }
+    button[type="submit"] { margin-top: 14px; padding: 9px 18px; background: #2563eb; color: white; border: none; border-radius: 7px; font-size: 13px; cursor: pointer; width: 100%; font-weight: 600; }
+    button[type="submit"]:hover { background: #1d4ed8; }
+
+    /* Provisions field - visible only for ristoro */
+    .provisions-row { display: none; }
+    .provisions-row.visible { display: block; }
+
+    /* Mappa grande */
+    #map { height: 420px; border-radius: 10px; cursor: crosshair; }
+    .map-placeholder { height: 420px; border-radius: 10px; background: #f9fafb; border: 2px dashed #e5e7eb; display: flex; flex-direction: column; align-items: center; justify-content: center; color: #9ca3af; font-size: 14px; gap: 8px; }
+    .map-hint { font-size: 12px; color: #6b7280; margin-top: 8px; background: #f0f9ff; border: 1px solid #bae6fd; border-radius: 6px; padding: 6px 10px; }
+    .coords-filled { background: #f0fdf4 !important; border-color: #86efac !important; }
+
+    /* GPX card */
+    .gpx-card { margin-bottom: 20px; }
+    .gpx-row { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
+    .gpx-status { font-size: 13px; }
+    .badge-ok { background: #d1fae5; color: #065f46; font-size: 12px; padding: 3px 10px; border-radius: 20px; font-weight: 600; }
+    .badge-no { background: #fee2e2; color: #991b1b; font-size: 12px; padding: 3px 10px; border-radius: 20px; font-weight: 600; }
+    .btn-upload-gpx { padding: 8px 16px; background: #f3f4f6; color: #374151; border: 1px solid #d1d5db; border-radius: 7px; font-size: 13px; cursor: pointer; font-weight: 500; }
+    .btn-upload-gpx:hover { background: #e5e7eb; }
+
+    /* Lista posizioni */
+    .loc-list { display: flex; flex-direction: column; gap: 10px; }
+    .loc-item { display: flex; align-items: flex-start; justify-content: space-between; background: #f9fafb; border-radius: 8px; padding: 11px 14px; }
+    .loc-info { font-size: 13px; flex: 1; }
+    .loc-info strong { display: block; color: #111827; margin-bottom: 2px; }
+    .loc-info .meta { color: #6b7280; font-size: 12px; }
+    .loc-info .provisions-badge { display: inline-block; background: #fef3c7; color: #92400e; font-size: 11px; padding: 2px 8px; border-radius: 4px; margin-top: 4px; }
+    .loc-info a { color: #2563eb; font-size: 12px; }
+    .btn-del { background: none; border: none; color: #ef4444; cursor: pointer; font-size: 16px; padding: 0 4px; margin-top: 0; }
+    .empty { color: #9ca3af; font-size: 14px; text-align: center; padding: 24px; }
+    .hint { font-size: 11px; color: #9ca3af; margin-top: 3px; }
+
+    @media (max-width: 768px) {
+      .top-grid { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="header-left">
+      <a href="/dashboard" class="header-back">← Dashboard</a>
+      <div>
+        <div class="header-title">🗺️ Mappa e Percorso</div>
+        <div class="header-subtitle">{{ race.name }}</div>
+      </div>
+    </div>
+    <nav class="header-nav">
+      <a href="/dashboard/races/{{ race.id }}/qa">✍️ Risposte</a>
+      <a href="/dashboard/tickets">Ticket</a>
+      <a href="/api/logout" class="logout">Esci</a>
+    </nav>
+  </header>
+
+  <div class="container">
+
+    {% if imported_waypoints > 0 %}
+    <div style="background:#dcfce7; border:1px solid #86efac; border-radius:10px; padding:12px 18px; margin-bottom:16px; font-size:14px; color:#15803d; display:flex; align-items:center; gap:10px;">
+      ✅ <strong>{{ imported_waypoints }} waypoint importati dal GPX</strong> come posizioni. Puoi aggiungere dotazione e note a ciascuno.
+    </div>
+    {% endif %}
+
+    <!-- Upload traccia GPX -->
+    <div class="card gpx-card">
+      <h2>🗺️ Traccia GPX</h2>
+      <div class="gpx-row">
+        {% if gpx_points > 0 %}
+          <span class="badge-ok">✓ Traccia caricata ({{ gpx_points }} punti)</span>
+          <span class="gpx-status" style="color:#6b7280">Visibile sulla mappa. Puoi sostituirla caricando un nuovo file.</span>
+        {% else %}
+          <span class="badge-no">Nessuna traccia</span>
+          <span class="gpx-status" style="color:#6b7280">Carica il file GPX della gara per visualizzare il percorso sulla mappa.</span>
+        {% endif %}
+        <form method="POST" action="/api/races/{{ race.id }}/upload-gpx" enctype="multipart/form-data" style="display:inline;">
+          <input type="file" name="file" accept=".gpx" id="gpx-file" style="display:none" onchange="this.form.submit()">
+          <button type="button" class="btn-upload-gpx" onclick="document.getElementById('gpx-file').click()">
+            📂 {{ 'Sostituisci GPX' if gpx_points > 0 else 'Carica file GPX' }}
+          </button>
+        </form>
+      </div>
+    </div>
+
+    <div class="top-grid">
+
+      <!-- Form aggiungi posizione -->
+      <div class="card">
+        <h2>Aggiungi posizione</h2>
+        <form method="POST" action="/api/races/{{ race.id }}/locations" id="loc-form">
+          <label>Nome *</label>
+          <input type="text" name="name" placeholder="es. Ristoro km 15" required>
+
+          <label>Tipo *</label>
+          <select name="tipo" required id="tipo-select" onchange="toggleProvisions(this.value)">
+            {% for key, emoji in tipi.items() %}
+            <option value="{{ key }}">{{ emoji }} {{ key|replace('_', ' ')|title }}</option>
+            {% endfor %}
+          </select>
+
+          <!-- Campo dotazione: visibile solo per ristori -->
+          <div class="provisions-row" id="provisions-row">
+            <label>Dotazione del ristoro</label>
+            <textarea name="provisions" placeholder="es. Acqua, Coca-Cola, gel energetici, frutta, medicinali base, drop bag"></textarea>
+            <p class="hint">Il chatbot userà queste info per rispondere alle domande dei partecipanti.</p>
+          </div>
+
+          <label>Link Google Maps</label>
+          <input type="url" name="google_maps_url" placeholder="https://maps.google.com/...">
+          <p class="hint">Vai su Google Maps → tasto destro → "Copia link"</p>
+
+          <label>Latitudine</label>
+          <input type="text" name="lat" id="input-lat" placeholder="Clicca sulla mappa oppure inserisci manualmente">
+
+          <label>Longitudine</label>
+          <input type="text" name="lng" id="input-lng" placeholder="Clicca sulla mappa oppure inserisci manualmente">
+
+          <label>Note aggiuntive</label>
+          <input type="text" name="notes" placeholder="es. Aperto dalle 7:00">
+
+          <button type="submit">Aggiungi posizione</button>
+        </form>
+      </div>
+
+      <!-- Mappa -->
+      <div class="card" style="padding:16px;">
+        <h2>Mappa interattiva</h2>
+        {% if locations or gpx_points > 0 %}
+          <p class="map-hint">👆 Clicca sulla mappa per impostare le coordinate di una posizione</p>
+          <div id="map-status" style="font-size:12px;color:#6b7280;padding:4px 0;"></div>
+          <div id="map"></div>
+        {% else %}
+          <div class="map-placeholder">
+            <span style="font-size:32px;">🗺️</span>
+            <span>Aggiungi posizioni o carica una traccia GPX</span>
+            <span style="font-size:12px;">per visualizzare la mappa</span>
+          </div>
+        {% endif %}
+      </div>
+    </div>
+
+    <!-- Lista posizioni -->
+    <div class="card">
+      <h2>Posizioni aggiunte ({{ locations|length }})</h2>
+      {% if locations %}
+        <div class="loc-list">
+          {% for loc in locations %}
+          <div class="loc-item">
+            <div class="loc-info">
+              <strong>{{ tipi.get(loc.type, '📍') }} {{ loc.name }}</strong>
+              <div class="meta">
+                {{ loc.type|replace('_', ' ')|title }}
+                {% if loc.notes %} · {{ loc.notes }}{% endif %}
+              </div>
+              {% if loc.provisions %}
+                <div class="provisions-badge">🍌 {{ loc.provisions }}</div>
+              {% endif %}
+              {% if loc.google_maps_url %}
+                <br><a href="{{ loc.google_maps_url }}" target="_blank">Apri su Google Maps →</a>
+              {% endif %}
+            </div>
+            <div style="display:flex;flex-direction:column;gap:4px;align-items:flex-end;">
+              <button class="btn-del" style="color:#2563eb;font-size:13px;" type="button"
+                onclick="openEditLoc('{{ loc.id }}','{{ loc.name|replace("'","\\'") }}','{{ loc.type }}','{{ loc.lat or "" }}','{{ loc.lng or "" }}','{{ loc.google_maps_url or "" }}','{{ loc.notes|replace("'","\\'") if loc.notes else "" }}','{{ loc.provisions|replace("'","\\'") if loc.provisions else "" }}')">✏️</button>
+              <form method="POST" action="/api/locations/{{ loc.id }}/delete">
+                <input type="hidden" name="race_id" value="{{ race.id }}">
+                <button class="btn-del" type="submit" title="Elimina">✕</button>
+              </form>
+            </div>
+          </div>
+          {% endfor %}
+        </div>
+      {% else %}
+        <div class="empty">Nessuna posizione aggiunta ancora.</div>
+      {% endif %}
+    </div>
+
+  </div>
+
+  <!-- Modal modifica posizione -->
+  <div id="edit-loc-modal" style="display:none;position:fixed;inset:0;background:rgba(15,23,42,0.5);backdrop-filter:blur(4px);align-items:center;justify-content:center;z-index:999;">
+    <div style="background:white;border-radius:16px;padding:28px;width:90%;max-width:460px;box-shadow:0 20px 60px rgba(0,0,0,0.2);">
+      <h3 style="font-size:16px;font-weight:700;margin-bottom:16px;">✏️ Modifica posizione</h3>
+      <form id="edit-loc-form" method="POST">
+        <input type="hidden" name="race_id" value="{{ race.id }}">
+        <label style="font-size:12px;font-weight:600;color:#6b7280;text-transform:uppercase;letter-spacing:0.4px;">Nome *</label>
+        <input type="text" name="name" id="el-name" required style="width:100%;padding:9px 12px;border:1.5px solid #e5e7eb;border-radius:8px;font-size:14px;margin-top:4px;">
+        <label style="font-size:12px;font-weight:600;color:#6b7280;text-transform:uppercase;letter-spacing:0.4px;display:block;margin-top:10px;">Tipo *</label>
+        <select name="tipo" id="el-tipo" onchange="toggleEditProvisions(this.value)" style="width:100%;padding:9px 12px;border:1.5px solid #e5e7eb;border-radius:8px;font-size:14px;margin-top:4px;">
+          {% for key, emoji in tipi.items() %}
+          <option value="{{ key }}">{{ emoji }} {{ key|replace('_', ' ')|title }}</option>
+          {% endfor %}
+        </select>
+        <div id="el-provisions-row" style="display:none;margin-top:10px;">
+          <label style="font-size:12px;font-weight:600;color:#6b7280;text-transform:uppercase;letter-spacing:0.4px;">Dotazione ristoro</label>
+          <input type="text" name="provisions" id="el-provisions" placeholder="es. Acqua, gel, frutta" style="width:100%;padding:9px 12px;border:1.5px solid #e5e7eb;border-radius:8px;font-size:14px;margin-top:4px;">
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:10px;">
+          <div>
+            <label style="font-size:12px;font-weight:600;color:#6b7280;text-transform:uppercase;letter-spacing:0.4px;">Latitudine</label>
+            <input type="text" name="lat" id="el-lat" style="width:100%;padding:9px 12px;border:1.5px solid #e5e7eb;border-radius:8px;font-size:14px;margin-top:4px;">
+          </div>
+          <div>
+            <label style="font-size:12px;font-weight:600;color:#6b7280;text-transform:uppercase;letter-spacing:0.4px;">Longitudine</label>
+            <input type="text" name="lng" id="el-lng" style="width:100%;padding:9px 12px;border:1.5px solid #e5e7eb;border-radius:8px;font-size:14px;margin-top:4px;">
+          </div>
+        </div>
+        <label style="font-size:12px;font-weight:600;color:#6b7280;text-transform:uppercase;letter-spacing:0.4px;display:block;margin-top:10px;">Link Google Maps</label>
+        <input type="url" name="google_maps_url" id="el-maps" style="width:100%;padding:9px 12px;border:1.5px solid #e5e7eb;border-radius:8px;font-size:14px;margin-top:4px;">
+        <label style="font-size:12px;font-weight:600;color:#6b7280;text-transform:uppercase;letter-spacing:0.4px;display:block;margin-top:10px;">Note</label>
+        <input type="text" name="notes" id="el-notes" style="width:100%;padding:9px 12px;border:1.5px solid #e5e7eb;border-radius:8px;font-size:14px;margin-top:4px;">
+        <div style="display:flex;gap:8px;margin-top:18px;">
+          <button type="submit" style="flex:1;padding:10px;background:#2563eb;color:white;border:none;border-radius:9px;font-size:14px;font-weight:600;cursor:pointer;">Salva</button>
+          <button type="button" onclick="document.getElementById('edit-loc-modal').style.display='none'" style="flex:1;padding:10px;background:#f1f5f9;color:#475569;border:none;border-radius:9px;font-size:14px;font-weight:600;cursor:pointer;">Annulla</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script>
+    function openEditLoc(id, name, tipo, lat, lng, maps, notes, provisions) {
+      document.getElementById("edit-loc-form").action = "/api/locations/" + id + "/edit";
+      document.getElementById("el-name").value = name;
+      document.getElementById("el-tipo").value = tipo;
+      document.getElementById("el-lat").value = lat;
+      document.getElementById("el-lng").value = lng;
+      document.getElementById("el-maps").value = maps;
+      document.getElementById("el-notes").value = notes;
+      document.getElementById("el-provisions").value = provisions;
+      toggleEditProvisions(tipo);
+      document.getElementById("edit-loc-modal").style.display = "flex";
+    }
+    function toggleEditProvisions(tipo) {
+      document.getElementById("el-provisions-row").style.display = tipo === "ristoro" ? "block" : "none";
+    }
+
+    // Mostra/nasconde il campo dotazione in base al tipo selezionato
+    function toggleProvisions(tipo) {
+      const row = document.getElementById('provisions-row');
+      row.classList.toggle('visible', tipo === 'ristoro');
+    }
+
+    // Mappa Leaflet
+    const locsData = {{ locations | tojson }};
+    const withCoords = locsData.filter(l => l.lat && l.lng);
+    const raceId = "{{ race.id }}";
+    const gpxPoints = {{ gpx_points }};
+    const gpxBbox = {{ gpx_bbox | tojson }};  // [[minLat,minLon],[maxLat,maxLon]] oppure null
+
+    if (withCoords.length > 0 || gpxPoints > 0) {
+      const map = L.map('map');
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '© OpenStreetMap contributors'
+      }).addTo(map);
+
+      // 1. Centra la mappa subito con le bbox calcolate dal server
+      if (gpxBbox) {
+        map.fitBounds(gpxBbox, { padding: [20, 20] });
+      } else if (withCoords.length > 0) {
+        map.setView([withCoords[0].lat, withCoords[0].lng], 13);
+      }
+
+      // 2. Carica e disegna la traccia GPX in modo asincrono
+      if (gpxPoints > 0) {
+        fetch('/api/races/' + raceId + '/gpx-track')
+          .then(r => r.json())
+          .then(function(track) {
+            if (!track || track.length === 0) return;
+            var pts = track.map(function(p) { return [+p[0], +p[1]]; });
+            L.polyline(pts, { color: '#2563eb', weight: 4, opacity: 0.9 }).addTo(map);
+            L.circleMarker(pts[0], { radius: 8, color: '#16a34a', fillColor: '#16a34a', fillOpacity: 1 })
+              .addTo(map).bindPopup('<strong>Partenza</strong>');
+            L.circleMarker(pts[pts.length - 1], { radius: 8, color: '#dc2626', fillColor: '#dc2626', fillOpacity: 1 })
+              .addTo(map).bindPopup('<strong>Arrivo</strong>');
+          })
+          .catch(function(e) { console.warn('GPX load error:', e); });
+      }
+
+      // 3. Aggiungi marker posizioni salvate
+      var icons = { partenza:'🏁', arrivo:'🏆', parcheggio:'🅿️', ristoro:'🍌', punto_medico:'🏥', altro:'📍' };
+      withCoords.forEach(function(loc) {
+        var icon = L.divIcon({ html: '<div style="font-size:22px;line-height:1;">' + (icons[loc.type]||'📍') + '</div>', className:'', iconSize:[28,28], iconAnchor:[14,14] });
+        var popup = '<strong>' + loc.name + '</strong>';
+        if (loc.notes) popup += '<br><span style="color:#6b7280;font-size:12px;">' + loc.notes + '</span>';
+        if (loc.provisions) popup += '<br><span style="color:#92400e;font-size:12px;">🍌 ' + loc.provisions + '</span>';
+        if (loc.google_maps_url) popup += '<br><a href="' + loc.google_maps_url + '" target="_blank" style="font-size:12px;">Apri su Maps →</a>';
+        L.marker([loc.lat, loc.lng], { icon: icon }).addTo(map).bindPopup(popup);
+      });
+
+      // 4. Click sulla mappa → compila lat/lng nel form
+      var clickMarker = null;
+      map.on('click', function(e) {
+        var lat = e.latlng.lat.toFixed(6);
+        var lng = e.latlng.lng.toFixed(6);
+        document.getElementById('input-lat').value = lat;
+        document.getElementById('input-lng').value = lng;
+        document.getElementById('input-lat').classList.add('coords-filled');
+        document.getElementById('input-lng').classList.add('coords-filled');
+        if (clickMarker) map.removeLayer(clickMarker);
+        clickMarker = L.marker([lat, lng], {
+          icon: L.divIcon({ html: '<div style="font-size:24px;line-height:1;">📌</div>', className:'', iconSize:[28,28], iconAnchor:[14,28] })
+        }).addTo(map).bindPopup('<span style="font-size:12px;">📌 ' + lat + ', ' + lng + '<br><em>Compila il form e salva</em></span>').openPopup();
+        document.getElementById('input-lat').scrollIntoView({ behavior:'smooth', block:'center' });
+      });
+    }
+  </script>
+</body>
+</html>

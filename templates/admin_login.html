@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>RaceBot — Admin</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: system-ui, -apple-system, sans-serif;
+      background: linear-gradient(135deg, #0f172a 0%, #1e3a5f 100%);
+      min-height: 100vh; display: flex; align-items: center; justify-content: center;
+    }
+    .login-card {
+      background: white; border-radius: 20px; padding: 40px 36px;
+      width: 100%; max-width: 380px;
+      box-shadow: 0 24px 64px rgba(0,0,0,0.35);
+    }
+    .logo { text-align: center; margin-bottom: 28px; }
+    .logo-icon { font-size: 36px; margin-bottom: 8px; }
+    .logo h1 { font-size: 20px; font-weight: 800; color: #0f172a; }
+    .logo p { font-size: 12px; color: #94a3b8; margin-top: 4px; letter-spacing: 1px; text-transform: uppercase; }
+    label { display: block; font-size: 12px; font-weight: 600; color: #6b7280; margin-bottom: 4px; margin-top: 16px; text-transform: uppercase; letter-spacing: 0.4px; }
+    input[type="text"], input[type="password"] {
+      width: 100%; padding: 10px 14px; border: 1.5px solid #e5e7eb;
+      border-radius: 9px; font-size: 14px; outline: none; background: #fafafa;
+    }
+    input:focus { border-color: #2563eb; background: white; }
+    .error { background: #fff1f2; border: 1px solid #fecdd3; color: #be123c; border-radius: 8px; padding: 10px 14px; font-size: 13px; margin-top: 14px; }
+    button[type="submit"] {
+      margin-top: 24px; width: 100%; padding: 12px; background: #1e3a5f; color: white;
+      border: none; border-radius: 10px; font-size: 15px; font-weight: 700; cursor: pointer;
+    }
+    button[type="submit"]:hover { background: #0f172a; }
+  </style>
+</head>
+<body>
+  <div class="login-card">
+    <div class="logo">
+      <div class="logo-icon">🛡️</div>
+      <h1>RaceBot Admin</h1>
+      <p>Super Administration Console</p>
+    </div>
+    {% if error %}
+    <div class="error">⚠️ {{ error }}</div>
+    {% endif %}
+    <form method="POST" action="/admin/login">
+      <label>Username</label>
+      <input type="text" name="username" required autocomplete="username">
+      <label>Password</label>
+      <input type="password" name="password" required autocomplete="current-password">
+      <button type="submit">Accedi →</button>
+    </form>
+  </div>
+</body>
+</html>

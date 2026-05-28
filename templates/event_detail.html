@@ -1,0 +1,364 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>RaceBot — {{ event.name }}</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: system-ui, -apple-system, sans-serif; background: #f4f6fb; min-height: 100vh; }
+
+    header {
+      background: linear-gradient(135deg, #1e40af 0%, #2563eb 100%);
+      padding: 0 32px; display: flex; align-items: center; justify-content: space-between;
+      height: 64px; box-shadow: 0 2px 12px rgba(37,99,235,0.25);
+    }
+    .header-left { display: flex; align-items: center; gap: 12px; }
+    .header-left a { color: rgba(255,255,255,0.75); font-size: 13px; text-decoration: none; padding: 6px 12px; border-radius: 8px; transition: background 0.15s; }
+    .header-left a:hover { background: rgba(255,255,255,0.15); color: white; }
+    header h1 { font-size: 18px; color: white; font-weight: 700; }
+    .header-right a { color: rgba(255,255,255,0.7); font-size: 13px; text-decoration: none; padding: 6px 14px; border-radius: 8px; }
+    .header-right a:hover { background: rgba(255,255,255,0.15); }
+
+    .container { max-width: 860px; margin: 0 auto; padding: 36px 20px 60px; }
+
+    .card {
+      background: white; border-radius: 16px; padding: 24px;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.06), 0 4px 16px rgba(0,0,0,0.04);
+      border: 1px solid #f1f5f9; margin-bottom: 20px;
+    }
+    .card h2 { font-size: 16px; font-weight: 700; color: #111827; margin-bottom: 16px; }
+
+    .info-grid { display: flex; gap: 20px; flex-wrap: wrap; }
+    .info-item { display: flex; align-items: center; gap: 6px; font-size: 14px; color: #475569; }
+
+    .link-box {
+      background: #f8fafc; border: 1.5px solid #e2e8f0; border-radius: 10px;
+      padding: 12px 16px; font-family: monospace; font-size: 13px; color: #334155;
+      word-break: break-all; margin-top: 16px;
+    }
+    .copy-btn {
+      margin-top: 8px; padding: 8px 16px; background: #2563eb; color: white;
+      border: none; border-radius: 8px; font-size: 13px; font-weight: 600; cursor: pointer;
+    }
+    .copy-btn:hover { background: #1d4ed8; }
+
+    .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    label { display: block; font-size: 12px; font-weight: 600; color: #6b7280; margin-bottom: 4px; margin-top: 12px; text-transform: uppercase; letter-spacing: 0.4px; }
+    input[type="text"], input[type="email"] {
+      width: 100%; padding: 9px 12px; border: 1.5px solid #e5e7eb;
+      border-radius: 8px; font-size: 14px; outline: none; background: #fafafa;
+    }
+    input:focus { border-color: #2563eb; background: white; }
+    button[type="submit"] {
+      margin-top: 16px; padding: 10px 20px; background: #2563eb; color: white;
+      border: none; border-radius: 9px; font-size: 14px; font-weight: 600; cursor: pointer; width: 100%;
+    }
+    button[type="submit"]:hover { background: #1d4ed8; }
+
+    .race-list { display: flex; flex-direction: column; gap: 10px; }
+    .race-card {
+      background: #f8fafc; border-radius: 12px; padding: 14px 18px;
+      display: flex; align-items: center; justify-content: space-between;
+      border: 1px solid #f1f5f9; transition: background 0.15s;
+    }
+    .race-card:hover { background: #f1f5f9; }
+    .race-info h3 { font-size: 15px; color: #1e293b; font-weight: 600; }
+    .race-meta { font-size: 12px; color: #94a3b8; margin-top: 4px; display: flex; gap: 12px; }
+    .race-actions { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
+
+    .badge { font-size: 11px; padding: 3px 9px; border-radius: 20px; font-weight: 600; }
+    .badge-green { background: #dcfce7; color: #15803d; }
+    .badge-red { background: #fee2e2; color: #b91c1c; }
+
+    .btn { padding: 6px 12px; font-size: 12px; border-radius: 7px; border: none; cursor: pointer; font-weight: 500; text-decoration: none; display: inline-flex; align-items: center; gap: 4px; transition: all 0.15s; white-space: nowrap; }
+    .btn-blue { background: #2563eb; color: white; }
+    .btn-blue:hover { background: #1d4ed8; }
+    .btn-gray { background: #f1f5f9; color: #475569; border: 1px solid #e2e8f0; }
+    .btn-gray:hover { background: #e2e8f0; }
+    .btn-red { background: #fff1f2; color: #be123c; border: 1px solid #fecdd3; }
+    .btn-red:hover { background: #ffe4e6; }
+    form.inline { display: inline; }
+
+    .empty { color: #94a3b8; text-align: center; padding: 24px; font-size: 14px; }
+
+    #edit-race-modal {
+      display: none; position: fixed; inset: 0;
+      background: rgba(15,23,42,0.5); backdrop-filter: blur(4px);
+      align-items: center; justify-content: center; z-index: 1001;
+    }
+    .edit-race-box {
+      background: white; border-radius: 16px; padding: 28px;
+      width: 90%; max-width: 520px; max-height: 90vh; overflow-y: auto;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.2);
+    }
+    .edit-race-box h3 { font-size: 16px; font-weight: 700; color: #111827; margin-bottom: 16px; }
+    .edit-form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .edit-race-actions { display: flex; gap: 8px; margin-top: 16px; }
+    .edit-race-actions button { flex: 1; padding: 10px; border: none; border-radius: 9px; font-size: 14px; font-weight: 600; cursor: pointer; }
+
+    #confirm-modal {
+      display: none; position: fixed; inset: 0;
+      background: rgba(15,23,42,0.5); backdrop-filter: blur(4px);
+      align-items: center; justify-content: center; z-index: 1000;
+    }
+    .confirm-box {
+      background: white; border-radius: 16px; padding: 28px;
+      width: 90%; max-width: 360px; text-align: center;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.2);
+    }
+    .confirm-box .icon { font-size: 36px; margin-bottom: 12px; }
+    .confirm-box h3 { font-size: 16px; font-weight: 700; margin-bottom: 8px; }
+    .confirm-box p { font-size: 13px; color: #6b7280; margin-bottom: 20px; }
+    .confirm-actions { display: flex; gap: 10px; }
+    .confirm-actions button { flex: 1; padding: 10px; border: none; border-radius: 9px; font-size: 14px; font-weight: 600; cursor: pointer; }
+
+    .sport-picker { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 4px; }
+    .sport-opt {
+      padding: 5px 11px; border-radius: 20px; font-size: 13px; font-weight: 500;
+      border: 1.5px solid #e2e8f0; cursor: pointer; background: white; user-select: none;
+    }
+    .sport-opt:hover { border-color: #2563eb; background: #eff6ff; }
+    .sport-opt.selected { border-color: #2563eb; background: #eff6ff; color: #1e40af; font-weight: 600; }
+
+    @media (max-width: 640px) {
+      .form-row { grid-template-columns: 1fr; }
+      .race-card { flex-direction: column; align-items: flex-start; gap: 10px; }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="header-left">
+      <a href="/dashboard">← Dashboard</a>
+      <h1>🏆 {{ event.name }}</h1>
+    </div>
+    <div class="header-right">
+      <a href="/api/logout">Esci</a>
+    </div>
+  </header>
+
+  <div class="container">
+
+    <div class="card">
+      <h2>Informazioni evento</h2>
+      <div class="info-grid">
+        {% if event.date %}<div class="info-item">📅 {{ event.date }}</div>{% endif %}
+        {% if event.location %}<div class="info-item">📍 {{ event.location }}</div>{% endif %}
+      </div>
+      <div class="link-box" id="event-link">{{ request.base_url }}chat/event/{{ event.id }}</div>
+      <button class="copy-btn" onclick="copyLink()">Copia link chatbot</button>
+    </div>
+
+    <div class="card">
+      <h2>Aggiungi gara a questo evento</h2>
+      <form method="POST" action="/api/races">
+        <input type="hidden" name="event_id" value="{{ event.id }}">
+        <label>Nome gara *</label>
+        <input type="text" name="name" placeholder="es. 25km, Gara Elite, Percorso Verde" required>
+        <div class="form-row">
+          <div>
+            <label>Data</label>
+            <input type="text" name="date" placeholder="es. 15 giugno 2025">
+          </div>
+          <div>
+            <label>Orario partenza</label>
+            <input type="text" name="start_time" placeholder="es. 08:30">
+          </div>
+        </div>
+        <div class="form-row">
+          <div>
+            <label>Lunghezza (km)</label>
+            <input type="text" name="length_km" placeholder="es. 25">
+          </div>
+          <div>
+            <label>Dislivello +</label>
+            <input type="text" name="elevation_gain" placeholder="es. 1.200 m">
+          </div>
+        </div>
+        <div>
+          <label>Email segreteria</label>
+          <input type="email" name="secretary_email" placeholder="segreteria@gara.it">
+        </div>
+        <div>
+          <label>Disciplina</label>
+          <input type="hidden" name="sport_type" id="sport-type-val" value="running">
+          <div class="sport-picker">
+            <div class="sport-opt selected" data-val="running" onclick="selectSport(this,'sport-type-val')">🏃 Corsa</div>
+            <div class="sport-opt" data-val="trail" onclick="selectSport(this,'sport-type-val')">🏔️ Trail</div>
+            <div class="sport-opt" data-val="cycling" onclick="selectSport(this,'sport-type-val')">🚴 Ciclismo</div>
+            <div class="sport-opt" data-val="mtb" onclick="selectSport(this,'sport-type-val')">🚵 MTB</div>
+            <div class="sport-opt" data-val="triathlon" onclick="selectSport(this,'sport-type-val')">🏊 Triathlon</div>
+            <div class="sport-opt" data-val="ski" onclick="selectSport(this,'sport-type-val')">⛷️ Sci</div>
+            <div class="sport-opt" data-val="trekking" onclick="selectSport(this,'sport-type-val')">🥾 Trekking</div>
+            <div class="sport-opt" data-val="obstacle" onclick="selectSport(this,'sport-type-val')">💪 OCR</div>
+            <div class="sport-opt" data-val="altro" onclick="selectSport(this,'sport-type-val')">🏅 Altro</div>
+          </div>
+        </div>
+        <button type="submit">+ Aggiungi gara</button>
+      </form>
+    </div>
+
+    <h2 style="font-size:17px; font-weight:700; color:#111827; margin-bottom:14px;">Gare dell'evento ({{ races|length }})</h2>
+    <div class="race-list">
+      {% if races %}
+        {% for race in races %}
+        <div class="race-card">
+          <div class="race-info">
+            {% set sport_icons = {"trail":"🏔️","running":"🏃","cycling":"🚴","mtb":"🚵","triathlon":"🏊","ski":"⛷️","ski_fondo":"🎿","swim":"🏊","kayak":"🚣","trekking":"🥾","obstacle":"💪","altro":"🏅"} %}
+            {% set sport_labels = {"trail":"Trail","running":"Corsa","cycling":"Ciclismo","mtb":"MTB","triathlon":"Triathlon","ski":"Sci","ski_fondo":"Sci fondo","swim":"Nuoto","kayak":"Kayak","trekking":"Trekking","obstacle":"OCR","altro":"Altro"} %}
+            <h3>{{ sport_icons.get(race.sport_type, "🏅") if race.sport_type else "🏅" }} {{ race.name }}</h3>
+            <div class="race-meta">
+              {% if race.sport_type %}<span style="background:#eff6ff;color:#1e40af;padding:1px 7px;border-radius:10px;font-weight:600;">{{ sport_labels.get(race.sport_type, race.sport_type) }}</span>{% endif %}
+              {% if race.date %}<span>📅 {{ race.date }}</span>{% endif %}
+              {% if race.start_time %}<span>🕐 {{ race.start_time }}</span>{% endif %}
+              {% if race.length_km %}<span>📏 {{ race.length_km }} km</span>{% endif %}
+              {% if race.elevation_gain %}<span>⛰️ {{ race.elevation_gain }}</span>{% endif %}
+            </div>
+          </div>
+          <div class="race-actions">
+            {% if race.pdf_uploaded %}
+              <span class="badge badge-green">PDF ✓</span>
+            {% elif race.text_regulation %}
+              <span class="badge badge-green">Testo ✓</span>
+            {% else %}
+              <span class="badge badge-red">No regolamento</span>
+            {% endif %}
+            <a href="/dashboard/races/{{ race.id }}/locations" class="btn btn-gray">📍 Mappa</a>
+            <a href="/dashboard/races/{{ race.id }}/qa" class="btn btn-gray">✍️ Risposte</a>
+            {% if race.pdf_uploaded %}
+              <form method="POST" action="/api/races/{{ race.id }}/upload" enctype="multipart/form-data" class="inline">
+                <input type="file" name="file" accept=".pdf" id="pdf-{{ race.id }}" style="display:none" onchange="this.form.submit()">
+                <button type="button" class="btn btn-gray" onclick="document.getElementById('pdf-{{ race.id }}').click()">📄 Sostituisci PDF</button>
+              </form>
+            {% elif race.text_regulation %}
+              <button type="button" class="btn btn-gray" onclick="openTextReg('{{ race.id }}', {{ race.text_regulation | tojson }})">📝 Modifica testo</button>
+            {% else %}
+              <form method="POST" action="/api/races/{{ race.id }}/upload" enctype="multipart/form-data" class="inline">
+                <input type="file" name="file" accept=".pdf" id="pdf-{{ race.id }}" style="display:none" onchange="this.form.submit()">
+                <button type="button" class="btn btn-gray" onclick="document.getElementById('pdf-{{ race.id }}').click()">📄 Carica PDF</button>
+              </form>
+              <button type="button" class="btn btn-gray" onclick="openTextReg('{{ race.id }}', '')">📝 Inserisci testo</button>
+            {% endif %}
+            <button type="button" class="btn btn-gray" onclick="openEditRace('{{ race.id }}', '{{ race.name|replace("'", "\\'") }}', '{{ race.date or "" }}', '{{ race.location or "" }}', '{{ race.elevation_gain or "" }}', '{{ race.secretary_email or "" }}', '{{ race.length_km or "" }}', '{{ race.start_time or "" }}', '{{ race.sport_type or "" }}')">✏️ Modifica</button>
+            <form method="POST" action="/api/races/{{ race.id }}/delete" class="inline">
+              <input type="hidden" name="event_id" value="{{ event.id }}">
+              <button type="button" class="btn btn-red" onclick="confirmDelete('{{ race.name }}', this.form)">🗑️</button>
+            </form>
+          </div>
+        </div>
+        {% endfor %}
+      {% else %}
+        <div class="empty">Nessuna gara ancora. Aggiungila qui sopra.</div>
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- Modal modifica gara -->
+  <div id="edit-race-modal">
+    <div class="edit-race-box">
+      <h3>✏️ Modifica gara</h3>
+      <form id="edit-race-form" method="POST">
+        <div id="edit-race-fields"></div>
+        <div class="edit-race-actions">
+          <button type="submit" style="background:#2563eb; color:white;">Salva modifiche</button>
+          <button type="button" style="background:#f1f5f9; color:#475569;" onclick="document.getElementById('edit-race-modal').style.display='none'">Annulla</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal regolamento testuale -->
+  <div id="text-reg-modal" style="display:none; position:fixed; inset:0; background:rgba(15,23,42,0.5); backdrop-filter:blur(4px); align-items:center; justify-content:center; z-index:999;">
+    <div style="background:white; border-radius:16px; padding:28px; width:90%; max-width:600px; box-shadow:0 20px 60px rgba(0,0,0,0.2);">
+      <h3 style="font-size:16px; font-weight:700; margin-bottom:6px;">📝 Regolamento testuale</h3>
+      <p style="font-size:13px; color:#64748b; margin-bottom:16px;">Inserisci il testo del regolamento. Il chatbot lo userà per rispondere alle domande dei partecipanti.</p>
+      <form id="text-reg-form" method="POST">
+        <textarea id="text-reg-content" name="text_regulation"
+          style="width:100%; height:260px; padding:12px; border:1.5px solid #e5e7eb; border-radius:10px; font-size:13px; font-family:inherit; resize:vertical; line-height:1.6; outline:none;"
+          placeholder="Incolla o scrivi qui il regolamento della gara..."></textarea>
+        <div style="display:flex; gap:8px; margin-top:14px;">
+          <button type="submit" style="flex:1; padding:10px; background:#2563eb; color:white; border:none; border-radius:9px; font-size:14px; font-weight:600; cursor:pointer;">Salva regolamento</button>
+          <button type="button" onclick="document.getElementById('text-reg-modal').style.display='none'" style="flex:1; padding:10px; background:#f1f5f9; color:#475569; border:none; border-radius:9px; font-size:14px; font-weight:600; cursor:pointer;">Annulla</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <div id="confirm-modal">
+    <div class="confirm-box">
+      <div class="icon">⚠️</div>
+      <h3>Elimina gara</h3>
+      <p id="confirm-msg"></p>
+      <div class="confirm-actions">
+        <button style="background:#fee2e2; color:#b91c1c;" id="confirm-yes">Sì, elimina</button>
+        <button style="background:#f1f5f9; color:#475569;" onclick="document.getElementById('confirm-modal').style.display='none'">Annulla</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const SPORTS = [
+      {val:"running",label:"🏃 Corsa"},{val:"trail",label:"🏔️ Trail"},
+      {val:"cycling",label:"🚴 Ciclismo"},{val:"mtb",label:"🚵 MTB"},
+      {val:"triathlon",label:"🏊 Triathlon"},{val:"ski",label:"⛷️ Sci"},
+      {val:"trekking",label:"🥾 Trekking"},{val:"obstacle",label:"💪 OCR"},
+      {val:"altro",label:"🏅 Altro"}
+    ];
+
+    function selectSport(el, hiddenId) {
+      el.closest('.sport-picker').querySelectorAll('.sport-opt').forEach(o => o.classList.remove('selected'));
+      el.classList.add('selected');
+      document.getElementById(hiddenId).value = el.dataset.val;
+    }
+
+    function openEditRace(id, name, date, location, elevation, email, lengthKm, startTime, sportType) {
+      document.getElementById("edit-race-form").action = `/api/races/${id}/edit`;
+      const currentSport = sportType || "running";
+      const sportPicker = SPORTS.map(s =>
+        `<div class="sport-opt${s.val===currentSport?' selected':''}" data-val="${s.val}" onclick="selectSport(this,'er-sport-val')">${s.label}</div>`
+      ).join('');
+      document.getElementById("edit-race-fields").innerHTML = `
+        <label>Nome gara *</label>
+        <input type="text" name="name" value="${name}" required>
+        <div class="edit-form-row">
+          <div><label>Data</label><input type="text" name="date" value="${date}" placeholder="es. 30 marzo 2025"></div>
+          <div><label>Orario partenza</label><input type="text" name="start_time" value="${startTime}" placeholder="es. 08:30"></div>
+        </div>
+        <div class="edit-form-row">
+          <div><label>Lunghezza (km)</label><input type="text" name="length_km" value="${lengthKm}" placeholder="es. 25"></div>
+          <div><label>Dislivello +</label><input type="text" name="elevation_gain" value="${elevation}" placeholder="es. 1.200 m"></div>
+        </div>
+        <div class="edit-form-row">
+          <div><label>Località</label><input type="text" name="location" value="${location}" placeholder="es. Roma"></div>
+          <div><label>Email segreteria</label><input type="email" name="secretary_email" value="${email}"></div>
+        </div>
+        <label>Disciplina</label>
+        <input type="hidden" name="sport_type" id="er-sport-val" value="${currentSport}">
+        <div class="sport-picker">${sportPicker}</div>
+      `;
+      document.getElementById("edit-race-modal").style.display = "flex";
+    }
+
+    let pendingForm = null;
+    function confirmDelete(name, form) {
+      pendingForm = form;
+      document.getElementById("confirm-msg").textContent = 'Vuoi eliminare "' + name + '"? L\'operazione non è reversibile.';
+      document.getElementById("confirm-modal").style.display = "flex";
+    }
+    document.getElementById("confirm-yes").addEventListener("click", function() {
+      if (pendingForm) pendingForm.submit();
+    });
+    function openTextReg(raceId, currentText) {
+      document.getElementById("text-reg-form").action = `/api/races/${raceId}/text-regulation`;
+      document.getElementById("text-reg-content").value = currentText || "";
+      document.getElementById("text-reg-modal").style.display = "flex";
+    }
+
+    function copyLink() {
+      const text = document.getElementById("event-link").textContent;
+      navigator.clipboard.writeText(text).then(() => alert("Link copiato!"));
+    }
+  </script>
+</body>
+</html>

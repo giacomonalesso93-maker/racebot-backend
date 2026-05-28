@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>RaceBot — Login</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: system-ui, sans-serif; background: #f0f2f5; display: flex; align-items: center; justify-content: center; min-height: 100vh; }
+    .card { background: white; border-radius: 12px; padding: 40px; width: 100%; max-width: 400px; box-shadow: 0 4px 20px rgba(0,0,0,0.1); }
+    .logo { text-align: center; margin-bottom: 32px; }
+    .logo h1 { font-size: 28px; color: #2563eb; font-weight: 800; }
+    .logo p { color: #6b7280; font-size: 14px; margin-top: 4px; }
+    label { display: block; font-size: 14px; font-weight: 500; color: #374151; margin-bottom: 6px; margin-top: 16px; }
+    input { width: 100%; padding: 10px 14px; border: 1px solid #d1d5db; border-radius: 8px; font-size: 15px; outline: none; transition: border-color 0.2s; }
+    input:focus { border-color: #2563eb; }
+    button { width: 100%; margin-top: 24px; padding: 12px; background: #2563eb; color: white; border: none; border-radius: 8px; font-size: 16px; font-weight: 600; cursor: pointer; }
+    button:hover { background: #1d4ed8; }
+    .footer { text-align: center; margin-top: 20px; font-size: 14px; color: #6b7280; }
+    .footer a { color: #2563eb; text-decoration: none; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <div class="logo">
+      <h1>🏃 RaceBot</h1>
+      <p>Pannello Organizzatore</p>
+    </div>
+    <form method="POST" action="/api/login">
+      <label for="email">Email</label>
+      <input type="email" id="email" name="email" placeholder="tuaemail@esempio.it" required>
+      <label for="password">Password</label>
+      <input type="password" id="password" name="password" placeholder="••••••••" required>
+      <button type="submit">Accedi</button>
+    </form>
+    <div class="footer">
+      Non hai un account? <a href="/register">Registrati</a>
+    </div>
+  </div>
+</body>
+</html>

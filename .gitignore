@@ -1,0 +1,18 @@
+# Variabili d'ambiente — MAI su Git
+.env
+
+# Virtual environment Python
+venv/
+__pycache__/
+*.pyc
+*.pyo
+
+# Database locale
+chroma_db/
+uploads/
+
+# VS Code
+.vscode/
+
+# macOS
+.DS_Store

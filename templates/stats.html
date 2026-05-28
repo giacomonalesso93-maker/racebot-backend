@@ -1,0 +1,387 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>RaceBot — Statistiche</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: system-ui, -apple-system, sans-serif; background: #f4f6fb; min-height: 100vh; }
+
+    /* ── HEADER ── */
+    header {
+      background: linear-gradient(135deg, #1e40af 0%, #2563eb 100%);
+      padding: 0 28px; height: 60px;
+      display: flex; align-items: center; justify-content: space-between;
+      box-shadow: 0 2px 12px rgba(37,99,235,0.25);
+    }
+    .header-left { display: flex; align-items: center; gap: 12px; }
+    .header-back {
+      color: rgba(255,255,255,0.8); text-decoration: none; font-size: 13px;
+      padding: 6px 12px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.25);
+      background: rgba(255,255,255,0.1); transition: background 0.15s;
+    }
+    .header-back:hover { background: rgba(255,255,255,0.2); color: white; }
+    .header-title { font-size: 15px; font-weight: 700; color: white; }
+    .header-nav { display: flex; align-items: center; gap: 4px; }
+    .header-nav a {
+      color: rgba(255,255,255,0.8); text-decoration: none; font-size: 13px;
+      padding: 6px 12px; border-radius: 8px; transition: background 0.15s;
+    }
+    .header-nav a:hover { background: rgba(255,255,255,0.15); color: white; }
+    .header-nav .active { background: rgba(255,255,255,0.2); color: white; font-weight: 600; }
+    .header-nav .logout { color: rgba(255,255,255,0.5); }
+
+    /* ── LAYOUT ── */
+    .container { max-width: 1020px; margin: 0 auto; padding: 32px 20px 60px; }
+
+    .section-title {
+      font-size: 16px; font-weight: 700; color: #111827;
+      margin-bottom: 16px; margin-top: 32px;
+      display: flex; align-items: center; gap: 8px;
+    }
+    .section-title:first-child { margin-top: 0; }
+
+    /* ── KPI ── */
+    .kpi-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 14px; margin-bottom: 8px; }
+    .kpi {
+      background: white; border-radius: 14px; padding: 18px 16px;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.06), 0 4px 16px rgba(0,0,0,0.04);
+      border: 1px solid #f1f5f9;
+      display: flex; align-items: center; gap: 12px;
+    }
+    .kpi-icon {
+      width: 40px; height: 40px; border-radius: 12px; flex-shrink: 0;
+      display: flex; align-items: center; justify-content: center; font-size: 18px;
+    }
+    .kpi-icon.blue { background: #eff6ff; }
+    .kpi-icon.green { background: #f0fdf4; }
+    .kpi-icon.orange { background: #fff7ed; }
+    .kpi-icon.red { background: #fff1f2; }
+    .kpi-icon.purple { background: #faf5ff; }
+    .kpi-number { font-size: 26px; font-weight: 800; color: #111827; line-height: 1; }
+    .kpi-label { font-size: 11px; color: #94a3b8; margin-top: 2px; font-weight: 500; }
+
+    /* ── CARD ── */
+    .card {
+      background: white; border-radius: 16px; padding: 24px;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.06), 0 4px 16px rgba(0,0,0,0.04);
+      border: 1px solid #f1f5f9;
+    }
+    .card h3 { font-size: 15px; font-weight: 700; color: #111827; margin-bottom: 16px; }
+    .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+
+    /* ── TOGGLE 7/30 gg ── */
+    .chart-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; }
+    .toggle-group { display: flex; background: #f1f5f9; border-radius: 8px; padding: 3px; gap: 2px; }
+    .toggle-btn {
+      padding: 5px 14px; border-radius: 6px; border: none; font-size: 12px; font-weight: 600;
+      cursor: pointer; background: none; color: #64748b; transition: all 0.15s;
+    }
+    .toggle-btn.active { background: white; color: #1e40af; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+
+    /* ── TOP DOMANDE ── */
+    .top-q {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 10px 0; border-bottom: 1px solid #f3f4f6; gap: 12px;
+    }
+    .top-q:last-child { border-bottom: none; }
+    .top-q-text { font-size: 13px; color: #374151; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .top-q-bar-wrap { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
+    .top-q-bar { height: 6px; border-radius: 3px; background: #2563eb; min-width: 4px; }
+    .top-q-count { font-size: 12px; color: #2563eb; font-weight: 700; width: 28px; text-align: right; }
+
+    /* ── TABELLA PER GARA ── */
+    table { width: 100%; border-collapse: collapse; font-size: 14px; }
+    th {
+      text-align: left; padding: 8px 12px; font-size: 11px; font-weight: 600;
+      color: #9ca3af; text-transform: uppercase; letter-spacing: 0.4px;
+      border-bottom: 2px solid #f3f4f6;
+    }
+    td { padding: 12px; border-bottom: 1px solid #f8fafc; color: #1e293b; }
+    tr:last-child td { border-bottom: none; }
+    tr:hover td { background: #fafafa; }
+    .rate-bar-wrap { display: flex; align-items: center; gap: 8px; }
+    .rate-bar-bg { flex: 1; height: 6px; background: #f1f5f9; border-radius: 3px; overflow: hidden; }
+    .rate-bar-fill { height: 100%; background: #10b981; border-radius: 3px; transition: width 0.3s; }
+    .rate-pct { font-size: 12px; color: #64748b; width: 36px; text-align: right; flex-shrink: 0; }
+
+    /* ── DOMANDE SENZA RISPOSTA ── */
+    .unanswered-item {
+      padding: 14px 16px; border-radius: 10px; background: #fafafa;
+      border: 1px solid #f1f5f9; margin-bottom: 8px;
+      display: flex; align-items: flex-start; gap: 12px;
+    }
+    .unanswered-item:last-child { margin-bottom: 0; }
+    .ua-dot { width: 8px; height: 8px; border-radius: 50%; background: #f59e0b; flex-shrink: 0; margin-top: 5px; }
+    .ua-content { flex: 1; min-width: 0; }
+    .ua-question { font-size: 14px; color: #1e293b; font-weight: 500; margin-bottom: 4px; }
+    .ua-meta { font-size: 12px; color: #94a3b8; display: flex; gap: 12px; }
+    .ua-reply-link {
+      font-size: 12px; color: #2563eb; text-decoration: none; flex-shrink: 0;
+      padding: 5px 10px; border-radius: 6px; border: 1px solid #bfdbfe;
+      background: #eff6ff; font-weight: 500;
+    }
+    .ua-reply-link:hover { background: #dbeafe; }
+
+    .empty { color: #9ca3af; text-align: center; padding: 32px; font-size: 14px; }
+    .export-link {
+      font-size: 13px; color: #2563eb; text-decoration: none; font-weight: 500;
+      padding: 6px 12px; border: 1px solid #bfdbfe; border-radius: 8px;
+      background: #eff6ff; transition: background 0.15s;
+    }
+    .export-link:hover { background: #dbeafe; }
+
+    @media (max-width: 700px) {
+      .kpi-grid { grid-template-columns: repeat(2, 1fr); }
+      .grid2 { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+
+  <header>
+    <div class="header-left">
+      <a href="/dashboard" class="header-back">← Dashboard</a>
+      <div class="header-title">📊 Statistiche</div>
+    </div>
+    <nav class="header-nav">
+      <a href="/dashboard/tickets">🎟️ Ticket</a>
+      <a href="/dashboard/stats" class="active">📊 Statistiche</a>
+      <a href="/dashboard/export/questions" style="color:rgba(255,255,255,0.7);">⬇️ CSV</a>
+      <a href="/api/logout" class="logout">Esci</a>
+    </nav>
+  </header>
+
+  <div class="container">
+
+    <!-- ── KPI ── -->
+    <div class="kpi-grid">
+      <div class="kpi">
+        <div class="kpi-icon blue">💬</div>
+        <div>
+          <div class="kpi-number">{{ total_questions }}</div>
+          <div class="kpi-label">Domande totali</div>
+        </div>
+      </div>
+      <div class="kpi">
+        <div class="kpi-icon green">✅</div>
+        <div>
+          <div class="kpi-number">{{ total_answered }}</div>
+          <div class="kpi-label">Risposte automatiche</div>
+        </div>
+      </div>
+      <div class="kpi">
+        <div class="kpi-icon purple">🎯</div>
+        <div>
+          <div class="kpi-number">{{ answered_rate }}%</div>
+          <div class="kpi-label">Tasso risposta auto</div>
+        </div>
+      </div>
+      <div class="kpi">
+        <div class="kpi-icon orange">🎟️</div>
+        <div>
+          <div class="kpi-number">{{ total_tickets }}</div>
+          <div class="kpi-label">Ticket generati</div>
+        </div>
+      </div>
+      <div class="kpi">
+        <div class="kpi-icon {% if tickets_open > 0 %}red{% else %}green{% endif %}">⏳</div>
+        <div>
+          <div class="kpi-number">{{ tickets_open }}</div>
+          <div class="kpi-label">Ticket aperti</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── GRAFICI ── -->
+    <div class="section-title" style="margin-top:28px;">Andamento domande</div>
+    <div class="grid2">
+
+      <!-- Grafico domande nel tempo -->
+      <div class="card">
+        <div class="chart-header">
+          <h3 style="margin-bottom:0;">Domande per giorno</h3>
+          <div class="toggle-group">
+            <button class="toggle-btn active" id="btn7" onclick="setRange(7)">7 gg</button>
+            <button class="toggle-btn" id="btn30" onclick="setRange(30)">30 gg</button>
+          </div>
+        </div>
+        <canvas id="chart-days" height="160"></canvas>
+      </div>
+
+      <!-- Grafico per gara -->
+      <div class="card">
+        <h3>Domande per gara</h3>
+        {% if race_chart_labels %}
+        <canvas id="chart-races" height="160"></canvas>
+        {% else %}
+        <div class="empty">Nessuna gara ancora.</div>
+        {% endif %}
+      </div>
+
+    </div>
+
+    <!-- ── TOP DOMANDE + TABELLA GARE ── -->
+    <div class="section-title">Dettaglio</div>
+    <div class="grid2">
+
+      <!-- Top domande frequenti -->
+      <div class="card">
+        <h3>Domande più frequenti</h3>
+        {% if top_questions %}
+          {% set max_count = top_questions[0][1] %}
+          {% for q, count in top_questions %}
+          <div class="top-q">
+            <span class="top-q-text" title="{{ q }}">{{ q[:55] }}{% if q|length > 55 %}...{% endif %}</span>
+            <div class="top-q-bar-wrap">
+              <div class="top-q-bar" style="width:{{ [(count / max_count * 60)|int, 4]|max }}px;"></div>
+              <span class="top-q-count">{{ count }}x</span>
+            </div>
+          </div>
+          {% endfor %}
+        {% else %}
+          <div class="empty">Nessuna domanda ancora.</div>
+        {% endif %}
+      </div>
+
+      <!-- Statistiche per gara -->
+      <div class="card">
+        <h3>Per gara</h3>
+        {% if race_stats %}
+        <table>
+          <thead>
+            <tr>
+              <th>Gara</th>
+              <th>Domande</th>
+              <th>Auto</th>
+              <th>Ticket</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for rs in race_stats %}
+            <tr>
+              <td style="font-weight:500; max-width:160px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">{{ rs.name }}</td>
+              <td>{{ rs.total }}</td>
+              <td>
+                <div class="rate-bar-wrap">
+                  <div class="rate-bar-bg">
+                    <div class="rate-bar-fill" style="width:{% if rs.total > 0 %}{{ (rs.answered / rs.total * 100)|int }}{% else %}0{% endif %}%;"></div>
+                  </div>
+                  <span class="rate-pct">{% if rs.total > 0 %}{{ (rs.answered / rs.total * 100)|int }}%{% else %}—{% endif %}</span>
+                </div>
+              </td>
+              <td>
+                {% if rs.tickets_open > 0 %}
+                  <span style="color:#d97706;font-weight:600;">{{ rs.tickets_open }} aperti</span>
+                {% else %}
+                  <span style="color:#15803d;">✓ OK</span>
+                {% endif %}
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+        {% else %}
+          <div class="empty">Nessuna gara ancora.</div>
+        {% endif %}
+      </div>
+
+    </div>
+
+    <!-- ── DOMANDE SENZA RISPOSTA ── -->
+    <div class="section-title" style="display:flex;align-items:center;justify-content:space-between;">
+      <span>⚠️ Domande senza risposta automatica ({{ unanswered|length }})</span>
+      <a href="/dashboard/tickets" class="export-link">Vai ai ticket →</a>
+    </div>
+    <div class="card">
+      {% if unanswered %}
+        {% for u in unanswered %}
+        <div class="unanswered-item">
+          <div class="ua-dot"></div>
+          <div class="ua-content">
+            <div class="ua-question">{{ u.question }}</div>
+            <div class="ua-meta">
+              <span>🏃 {{ u.race_name }}</span>
+              {% if u.created_at %}<span>📅 {{ u.created_at[:10] }}</span>{% endif %}
+              {% if u.participant_email %}<span>📧 {{ u.participant_email }}</span>{% endif %}
+            </div>
+          </div>
+          <a href="/dashboard/tickets" class="ua-reply-link">Rispondi →</a>
+        </div>
+        {% endfor %}
+      {% else %}
+        <div class="empty">🎉 Nessuna domanda in attesa di risposta!</div>
+      {% endif %}
+    </div>
+
+  </div>
+
+  <script>
+    const days7  = {{ days_7  | tojson }};
+    const counts7  = {{ counts_7  | tojson }};
+    const days30 = {{ days_30 | tojson }};
+    const counts30 = {{ counts_30 | tojson }};
+    const raceLabels = {{ race_chart_labels | tojson }};
+    const raceData   = {{ race_chart_data   | tojson }};
+
+    // ── Grafico giornaliero ──
+    const ctxDays = document.getElementById("chart-days").getContext("2d");
+    const chartDays = new Chart(ctxDays, {
+      type: "bar",
+      data: {
+        labels: days7.map(d => d.slice(5)),
+        datasets: [{
+          label: "Domande",
+          data: counts7,
+          backgroundColor: "#2563eb",
+          borderRadius: 5,
+          borderSkipped: false,
+        }]
+      },
+      options: {
+        plugins: { legend: { display: false } },
+        scales: {
+          y: { beginAtZero: true, ticks: { stepSize: 1, precision: 0 }, grid: { color: "#f1f5f9" } },
+          x: { grid: { display: false } }
+        }
+      }
+    });
+
+    function setRange(days) {
+      const labels = days === 7 ? days7 : days30;
+      const data   = days === 7 ? counts7 : counts30;
+      chartDays.data.labels  = labels.map(d => d.slice(5));
+      chartDays.data.datasets[0].data = data;
+      chartDays.update();
+      document.getElementById("btn7").classList.toggle("active", days === 7);
+      document.getElementById("btn30").classList.toggle("active", days === 30);
+    }
+
+    // ── Grafico per gara ──
+    if (raceLabels.length > 0) {
+      const palette = ["#2563eb","#7c3aed","#0891b2","#059669","#d97706","#dc2626","#db2777"];
+      new Chart(document.getElementById("chart-races").getContext("2d"), {
+        type: "doughnut",
+        data: {
+          labels: raceLabels,
+          datasets: [{
+            data: raceData,
+            backgroundColor: palette.slice(0, raceLabels.length),
+            borderWidth: 2,
+            borderColor: "white",
+            hoverOffset: 6
+          }]
+        },
+        options: {
+          plugins: {
+            legend: { position: "bottom", labels: { font: { size: 12 }, padding: 12 } }
+          },
+          cutout: "60%"
+        }
+      });
+    }
+  </script>
+</body>
+</html>

@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>RaceBot — Risposte personalizzate</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: system-ui, sans-serif; background: #f4f6fb; }
+
+    /* ── HEADER ── */
+    header {
+      background: linear-gradient(135deg, #1e40af 0%, #2563eb 100%);
+      padding: 0 28px; height: 60px;
+      display: flex; align-items: center; justify-content: space-between;
+      box-shadow: 0 2px 12px rgba(37,99,235,0.25);
+    }
+    .header-left { display: flex; align-items: center; gap: 12px; }
+    .header-back {
+      color: rgba(255,255,255,0.8); text-decoration: none; font-size: 13px;
+      padding: 6px 12px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.25);
+      background: rgba(255,255,255,0.1); transition: background 0.15s;
+    }
+    .header-back:hover { background: rgba(255,255,255,0.2); color: white; }
+    .header-title { font-size: 15px; font-weight: 700; color: white; }
+    .header-subtitle { font-size: 11px; color: rgba(255,255,255,0.65); margin-top: 1px; }
+    .header-nav { display: flex; align-items: center; gap: 4px; }
+    .header-nav a {
+      color: rgba(255,255,255,0.8); text-decoration: none; font-size: 13px;
+      padding: 6px 12px; border-radius: 8px; transition: background 0.15s;
+    }
+    .header-nav a:hover { background: rgba(255,255,255,0.15); color: white; }
+    .header-nav .logout { color: rgba(255,255,255,0.5); }
+    .container { max-width: 860px; margin: 32px auto; padding: 0 20px; display: grid; grid-template-columns: 1fr 1fr; gap: 24px; align-items: start; }
+    .card { background: white; border-radius: 12px; padding: 24px; box-shadow: 0 2px 10px rgba(0,0,0,0.06); }
+    h2 { font-size: 17px; color: #111827; margin-bottom: 6px; font-weight: 700; }
+    .subtitle { font-size: 13px; color: #6b7280; margin-bottom: 18px; line-height: 1.5; }
+    label { display: block; font-size: 13px; font-weight: 500; color: #374151; margin-bottom: 4px; margin-top: 14px; }
+    input, textarea { width: 100%; padding: 9px 12px; border: 1px solid #d1d5db; border-radius: 7px; font-size: 13px; font-family: inherit; }
+    textarea { resize: vertical; min-height: 80px; }
+    input:focus, textarea:focus { outline: none; border-color: #2563eb; }
+    button[type="submit"] { margin-top: 16px; padding: 10px 20px; background: #2563eb; color: white; border: none; border-radius: 7px; font-size: 14px; cursor: pointer; width: 100%; font-weight: 600; }
+    button[type="submit"]:hover { background: #1d4ed8; }
+
+    .qa-list { display: flex; flex-direction: column; gap: 12px; }
+    .qa-item { background: #f9fafb; border-radius: 10px; padding: 14px 16px; border-left: 3px solid #2563eb; }
+    .qa-item .q { font-size: 13px; font-weight: 600; color: #111827; margin-bottom: 6px; }
+    .qa-item .a { font-size: 13px; color: #374151; line-height: 1.5; }
+    .qa-item .actions { margin-top: 10px; display: flex; justify-content: flex-end; }
+    .btn-del { background: none; border: none; color: #ef4444; cursor: pointer; font-size: 13px; padding: 2px 6px; }
+    .btn-del:hover { text-decoration: underline; }
+    .empty { color: #9ca3af; font-size: 14px; text-align: center; padding: 32px 16px; }
+    .tip { background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 8px; padding: 12px 14px; font-size: 12px; color: #1e40af; margin-bottom: 18px; line-height: 1.6; }
+
+    @media (max-width: 700px) { .container { grid-template-columns: 1fr; } }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="header-left">
+      <a href="/dashboard" class="header-back">← Dashboard</a>
+      <div>
+        <div class="header-title">✍️ Risposte personalizzate</div>
+        <div class="header-subtitle">{{ race.name }}</div>
+      </div>
+    </div>
+    <nav class="header-nav">
+      <a href="/dashboard/races/{{ race.id }}/locations">📍 Mappa</a>
+      <a href="/dashboard/tickets">Ticket</a>
+      <a href="/api/logout" class="logout">Esci</a>
+    </nav>
+  </header>
+
+  <div class="container">
+
+    <!-- Form aggiungi Q&A -->
+    <div class="card">
+      <h2>Aggiungi risposta</h2>
+      <p class="subtitle">Il chatbot userà queste risposte esatte quando riceve una domanda simile — prima ancora di cercare nel regolamento.</p>
+
+      <div class="tip">
+        💡 <strong>Esempi utili:</strong> rimborsi iscrizione, cambio categoria, contatti segreteria, istruzioni specifiche non presenti nel PDF.
+      </div>
+
+      <form method="POST" action="/api/races/{{ race.id }}/qa">
+        <label>Domanda *</label>
+        <input type="text" name="question" placeholder="es. Come faccio il rimborso dell'iscrizione?" required>
+
+        <label>Risposta *</label>
+        <textarea name="answer" placeholder="es. Per richiedere il rimborso scrivi a segreteria@gara.it entro 7 giorni dalla gara indicando nome, cognome e IBAN." required></textarea>
+
+        <button type="submit">Salva risposta</button>
+      </form>
+    </div>
+
+    <!-- Lista risposte salvate -->
+    <div class="card">
+      <h2>Risposte salvate ({{ items|length }})</h2>
+      <p class="subtitle">Il chatbot le usa in automatico quando la domanda è simile.</p>
+
+      {% if items %}
+        <div class="qa-list">
+          {% for item in items %}
+          <div class="qa-item">
+            <div class="q">❓ {{ item.question }}</div>
+            <div class="a">💬 {{ item.answer }}</div>
+            <div class="actions">
+              <form method="POST" action="/api/qa/{{ item.id }}/delete">
+                <input type="hidden" name="race_id" value="{{ race.id }}">
+                <button class="btn-del" type="submit">✕ Elimina</button>
+              </form>
+            </div>
+          </div>
+          {% endfor %}
+        </div>
+      {% else %}
+        <div class="empty">
+          Nessuna risposta personalizzata ancora.<br>
+          <span style="font-size:12px;">Aggiungi la prima usando il form.</span>
+        </div>
+      {% endif %}
+    </div>
+
+  </div>
+</body>
+</html>

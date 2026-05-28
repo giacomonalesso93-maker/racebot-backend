@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8">
+  <title>RaceBot Widget — {{ race.name }}</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: system-ui, sans-serif; background: transparent; }
+
+    #racebot-bubble {
+      position: fixed;
+      bottom: 24px;
+      right: 24px;
+      width: 56px;
+      height: 56px;
+      background: #2563eb;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      box-shadow: 0 4px 16px rgba(37,99,235,0.4);
+      font-size: 26px;
+      z-index: 9999;
+      transition: transform 0.2s;
+    }
+    #racebot-bubble:hover { transform: scale(1.1); }
+
+    #racebot-window {
+      display: none;
+      position: fixed;
+      bottom: 92px;
+      right: 24px;
+      width: 360px;
+      height: 500px;
+      background: white;
+      border-radius: 16px;
+      box-shadow: 0 8px 40px rgba(0,0,0,0.18);
+      flex-direction: column;
+      overflow: hidden;
+      z-index: 9999;
+    }
+    #racebot-window.open { display: flex; }
+
+    .rb-header {
+      background: #2563eb;
+      color: white;
+      padding: 14px 18px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .rb-header h3 { font-size: 15px; font-weight: 700; }
+    .rb-header p { font-size: 12px; opacity: 0.8; }
+    .rb-close { background: none; border: none; color: white; font-size: 20px; cursor: pointer; }
+
+    .rb-messages {
+      flex: 1;
+      overflow-y: auto;
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      background: #f8fafc;
+    }
+    .rb-msg {
+      max-width: 85%;
+      padding: 10px 14px;
+      border-radius: 12px;
+      font-size: 14px;
+      line-height: 1.5;
+    }
+    .rb-msg.bot {
+      background: white;
+      color: #111827;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.07);
+      align-self: flex-start;
+      border-bottom-left-radius: 3px;
+    }
+    .rb-msg.user {
+      background: #2563eb;
+      color: white;
+      align-self: flex-end;
+      border-bottom-right-radius: 3px;
+    }
+
+    .rb-input {
+      padding: 12px 14px;
+      display: flex;
+      gap: 8px;
+      border-top: 1px solid #e5e7eb;
+      background: white;
+    }
+    .rb-input input {
+      flex: 1;
+      padding: 8px 14px;
+      border: 1px solid #d1d5db;
+      border-radius: 20px;
+      font-size: 14px;
+      outline: none;
+    }
+    .rb-input input:focus { border-color: #2563eb; }
+    .rb-input button {
+      padding: 8px 16px;
+      background: #2563eb;
+      color: white;
+      border: none;
+      border-radius: 20px;
+      font-size: 14px;
+      cursor: pointer;
+    }
+    .rb-powered {
+      text-align: center;
+      font-size: 11px;
+      color: #9ca3af;
+      padding: 6px;
+      background: white;
+    }
+    .rb-powered a { color: #9ca3af; text-decoration: none; }
+  </style>
+</head>
+<body>
+
+  <div id="racebot-bubble" onclick="rbToggle()">🏃</div>
+
+  <div id="racebot-window">
+    <div class="rb-header">
+      <div>
+        <h3>{{ race.name }}</h3>
+        <p>Assistente virtuale della gara</p>
+      </div>
+      <button class="rb-close" onclick="rbToggle()">✕</button>
+    </div>
+
+    <div class="rb-messages" id="rb-messages">
+      <div class="rb-msg bot">Ciao! 👋 Sono l'assistente di <strong>{{ race.name }}</strong>. Come posso aiutarti?</div>
+    </div>
+
+    <div class="rb-input">
+      <input type="text" id="rb-question" placeholder="Scrivi una domanda..." autocomplete="off">
+      <button onclick="rbSend()">➤</button>
+    </div>
+    <div class="rb-powered">Powered by <a href="https://racebot.it" target="_blank">RaceBot</a></div>
+  </div>
+
+  <script>
+    const RACE_ID = "{{ race.id }}";
+    const API_BASE = window.location.origin;
+
+    function rbToggle() {
+      const win = document.getElementById("racebot-window");
+      win.classList.toggle("open");
+      if (win.classList.contains("open")) {
+        document.getElementById("rb-question").focus();
+      }
+    }
+
+    document.getElementById("rb-question").addEventListener("keydown", e => {
+      if (e.key === "Enter") rbSend();
+    });
+
+    function rbAdd(text, type) {
+      const msgs = document.getElementById("rb-messages");
+      const div = document.createElement("div");
+      div.className = `rb-msg ${type}`;
+      div.innerHTML = text.replace(/\n/g, "<br>").replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>");
+      msgs.appendChild(div);
+      msgs.scrollTop = msgs.scrollHeight;
+      return div;
+    }
+
+    async function rbSend() {
+      const input = document.getElementById("rb-question");
+      const question = input.value.trim();
+      if (!question) return;
+      input.value = "";
+
+      rbAdd(question, "user");
+      const typing = rbAdd("...", "bot");
+
+      try {
+        const form = new FormData();
+        form.append("question", question);
+        const res = await fetch(`${API_BASE}/api/ask/${RACE_ID}`, { method: "POST", body: form });
+        const data = await res.json();
+        typing.remove();
+        rbAdd(res.ok ? data.risposta : "Mi dispiace, non ho trovato informazioni. Contatta la segreteria.", "bot");
+      } catch {
+        typing.remove();
+        rbAdd("Errore di connessione. Riprova.", "bot");
+      }
+    }
+  </script>
+
+</body>
+</html>

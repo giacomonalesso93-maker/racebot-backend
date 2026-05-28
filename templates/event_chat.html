@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{{ event.name }} — Assistente virtuale</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: system-ui, sans-serif; background: #f0f2f5; display: flex; flex-direction: column; height: 100vh; }
+
+    header { background: #2563eb; color: white; padding: 14px 20px; display: flex; align-items: center; justify-content: space-between; }
+    .header-info h1 { font-size: 17px; font-weight: 700; }
+    .header-info p { font-size: 12px; opacity: 0.8; margin-top: 2px; }
+    .map-toggle {
+      background: rgba(255,255,255,0.2); border: none; color: white;
+      padding: 6px 14px; border-radius: 20px; font-size: 13px; cursor: pointer;
+      display: none;
+    }
+    .map-toggle:hover { background: rgba(255,255,255,0.3); }
+
+    #map-panel { display: none; background: white; border-bottom: 1px solid #e5e7eb; }
+    #map { height: 220px; }
+    .loc-list-chat { padding: 8px 14px; display: flex; flex-wrap: wrap; gap: 6px; }
+    .loc-chip { font-size: 12px; background: #f3f4f6; border-radius: 20px; padding: 4px 10px; text-decoration: none; color: #374151; }
+    .loc-chip:hover { background: #e5e7eb; }
+
+    .messages { flex: 1; overflow-y: auto; padding: 20px; display: flex; flex-direction: column; gap: 12px; }
+    .msg { max-width: 80%; padding: 12px 16px; border-radius: 12px; font-size: 15px; line-height: 1.5; }
+    .msg.bot { background: white; color: #111827; box-shadow: 0 1px 4px rgba(0,0,0,0.08); align-self: flex-start; border-bottom-left-radius: 4px; }
+    .msg.user { background: #2563eb; color: white; align-self: flex-end; border-bottom-right-radius: 4px; }
+    .msg.typing { color: #9ca3af; font-style: italic; }
+
+    .race-selector { align-self: flex-start; display: flex; flex-wrap: wrap; gap: 10px; margin-top: 4px; }
+    .race-btn {
+      background: white; border: 2px solid #2563eb; color: #2563eb;
+      padding: 10px 20px; border-radius: 24px; font-size: 14px; font-weight: 600;
+      cursor: pointer; transition: all 0.15s;
+    }
+    .race-btn:hover { background: #2563eb; color: white; }
+
+    .input-area { background: white; padding: 14px 18px; display: flex; gap: 10px; border-top: 1px solid #e5e7eb; }
+    .input-area input {
+      flex: 1; padding: 10px 16px; border: 1px solid #d1d5db;
+      border-radius: 24px; font-size: 15px; outline: none;
+    }
+    .input-area input:focus { border-color: #2563eb; }
+    .input-area input:disabled { background: #f9fafb; cursor: not-allowed; }
+    .input-area button {
+      padding: 10px 20px; background: #2563eb; color: white;
+      border: none; border-radius: 24px; font-size: 15px; font-weight: 600; cursor: pointer;
+    }
+    .input-area button:hover { background: #1d4ed8; }
+    .input-area button:disabled { background: #d1d5db; cursor: not-allowed; }
+
+    #email-modal { display:none; position:fixed; inset:0; background:rgba(0,0,0,0.4); align-items:center; justify-content:center; }
+    #email-modal .modal-box { background:white; border-radius:12px; padding:28px; width:90%; max-width:380px; }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="header-info">
+      <h1>🏃 {{ event.name }}</h1>
+      <p id="header-sub">Assistente virtuale{% if event.date %} · {{ event.date }}{% endif %}</p>
+    </div>
+    <button class="map-toggle" id="map-btn" onclick="toggleMap()">📍 Mappa</button>
+  </header>
+
+  <div id="map-panel">
+    <div id="map"></div>
+    <div class="loc-list-chat" id="loc-chips"></div>
+  </div>
+
+  <div class="messages" id="messages">
+    <div class="msg bot">
+      Ciao! 👋 Benvenuto all'assistente virtuale di <strong>{{ event.name }}</strong>.<br><br>
+      A quale gara sei iscritto?
+    </div>
+    <div class="race-selector" id="race-selector">
+      {% for race in races %}
+      <button class="race-btn" onclick="selectRace('{{ race.id }}', '{{ race.name }}')">
+        🏃 {{ race.name }}{% if race.date %} <span style="font-weight:400;font-size:12px;">({{ race.date }})</span>{% endif %}
+      </button>
+      {% endfor %}
+    </div>
+  </div>
+
+  <div class="input-area">
+    <input type="text" id="question" placeholder="Prima seleziona la tua gara..." disabled autocomplete="off">
+    <button id="send-btn" onclick="sendMessage()" disabled>Invia</button>
+  </div>
+
+  <div id="email-modal">
+    <div class="modal-box">
+      <h3 style="margin-bottom:8px;">Vuoi ricevere una risposta?</h3>
+      <p style="font-size:14px;color:#6b7280;margin-bottom:16px;">La tua domanda è stata inoltrata all'organizzatore. Lascia la tua email per ricevere la risposta.</p>
+      <input type="email" id="participant-email" placeholder="tua@email.it" style="width:100%;padding:10px;border:1px solid #d1d5db;border-radius:8px;font-size:14px;margin-bottom:12px;">
+      <div style="display:flex;gap:8px;">
+        <button onclick="submitEmail()" style="flex:1;padding:10px;background:#2563eb;color:white;border:none;border-radius:8px;cursor:pointer;">Invia</button>
+        <button onclick="closeModal()" style="flex:1;padding:10px;background:#f3f4f6;border:none;border-radius:8px;cursor:pointer;">Salta</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    var currentRaceId = null;
+    var currentRaceName = null;
+    var pendingTicketId = null;
+    var mapInitialized = false;
+
+    var messages = document.getElementById("messages");
+    var input = document.getElementById("question");
+    var sendBtn = document.getElementById("send-btn");
+
+    input.addEventListener("keydown", function(e) { if (e.key === "Enter") sendMessage(); });
+
+    function addMessage(text, type) {
+      var div = document.createElement("div");
+      div.className = "msg " + type;
+      div.innerHTML = text.replace(/\n/g, "<br>").replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>");
+      messages.appendChild(div);
+      messages.scrollTop = messages.scrollHeight;
+      return div;
+    }
+
+    function selectRace(raceId, raceName) {
+      currentRaceId = raceId;
+      currentRaceName = raceName;
+
+      document.getElementById("race-selector").remove();
+      addMessage("Sono iscritto alla <strong>" + raceName + "</strong>", "user");
+
+      setTimeout(function() {
+        addMessage("Perfetto! 🎽 Rispondo come assistente della <strong>" + raceName + "</strong>.<br>Come posso aiutarti?", "bot");
+        input.disabled = false;
+        input.placeholder = "Scrivi una domanda...";
+        sendBtn.disabled = false;
+        input.focus();
+        document.getElementById("map-btn").style.display = "block";
+        document.getElementById("header-sub").textContent = raceName;
+      }, 400);
+    }
+
+    function toggleMap() {
+      var panel = document.getElementById("map-panel");
+      var isHidden = panel.style.display === "none" || panel.style.display === "";
+      panel.style.display = isHidden ? "block" : "none";
+      if (!mapInitialized && isHidden) initMap();
+    }
+
+    function initMap() {
+      mapInitialized = true;
+      var icons = { partenza:"🏁", arrivo:"🏆", parcheggio:"🅿️", ristoro:"🍌", punto_medico:"🏥", altro:"📍" };
+
+      fetch("/api/races/" + currentRaceId + "/locations")
+        .then(function(r) { return r.json(); })
+        .then(function(locations) {
+          var chips = document.getElementById("loc-chips");
+          locations.forEach(function(loc) {
+            var chip = document.createElement("a");
+            chip.className = "loc-chip";
+            chip.textContent = (icons[loc.type] || "📍") + " " + loc.name;
+            if (loc.provisions) chip.textContent += " (" + loc.provisions + ")";
+            chip.href = loc.google_maps_url || "#";
+            chip.target = "_blank";
+            chips.appendChild(chip);
+          });
+
+          var withCoords = locations.filter(function(l) { return l.lat && l.lng; });
+          var map = L.map("map");
+          L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png").addTo(map);
+
+          fetch("/api/races/" + currentRaceId + "/gpx-track")
+            .then(function(r) { return r.json(); })
+            .then(function(track) {
+              if (track && track.length > 0) {
+                var pts = track.map(function(p) { return [+p[0], +p[1]]; });
+                L.polyline(pts, { color: "#2563eb", weight: 3, opacity: 0.85 }).addTo(map);
+                // Calcola bbox dalla traccia
+                var lats = pts.map(function(p){ return p[0]; });
+                var lngs = pts.map(function(p){ return p[1]; });
+                map.fitBounds([[Math.min.apply(null,lats), Math.min.apply(null,lngs)], [Math.max.apply(null,lats), Math.max.apply(null,lngs)]], { padding: [10,10] });
+              } else if (withCoords.length > 0) {
+                map.setView([withCoords[0].lat, withCoords[0].lng], 13);
+              } else {
+                map.setView([41.9, 12.5], 6);
+                document.getElementById("map").innerHTML = '<p style="text-align:center;padding:20px;color:#9ca3af;">Nessuna mappa disponibile per questa gara.</p>';
+              }
+
+              withCoords.forEach(function(loc) {
+                var icon = L.divIcon({ html: icons[loc.type] || "📍", className: "", iconSize: [24, 24] });
+                var popup = "<strong>" + loc.name + "</strong>";
+                if (loc.provisions) popup += "<br><span style='font-size:12px;'>🍌 " + loc.provisions + "</span>";
+                L.marker([loc.lat, loc.lng], { icon: icon }).addTo(map).bindPopup(popup);
+              });
+            });
+        });
+    }
+
+    async function sendMessage() {
+      if (!currentRaceId) return;
+      var question = input.value.trim();
+      if (!question) return;
+      input.value = "";
+
+      addMessage(question, "user");
+      var typing = addMessage("Sto cercando nel regolamento...", "bot typing");
+
+      try {
+        var formData = new FormData();
+        formData.append("question", question);
+        var res = await fetch("/api/ask/" + currentRaceId, { method: "POST", body: formData });
+        var data = await res.json();
+        typing.remove();
+
+        if (res.ok) {
+          addMessage(data.risposta, "bot");
+          if (data.ticket_creato) {
+            pendingTicketId = data.ticket_id;
+            setTimeout(function() {
+              document.getElementById("email-modal").style.display = "flex";
+            }, 800);
+          }
+        } else {
+          addMessage("Mi dispiace, non ho trovato informazioni. Contatta la segreteria.", "bot");
+        }
+      } catch(e) {
+        typing.remove();
+        addMessage("Errore di connessione. Riprova.", "bot");
+      }
+    }
+
+    async function submitEmail() {
+      var email = document.getElementById("participant-email").value.trim();
+      if (email && pendingTicketId) {
+        await fetch("/api/tickets/" + pendingTicketId + "/email", {
+          method: "POST",
+          headers: {"Content-Type": "application/x-www-form-urlencoded"},
+          body: "email=" + encodeURIComponent(email)
+        });
+      }
+      closeModal();
+      addMessage("Grazie! Riceverai una risposta via email appena disponibile. 📧", "bot");
+    }
+
+    function closeModal() {
+      document.getElementById("email-modal").style.display = "none";
+    }
+  </script>
+</body>
+</html>

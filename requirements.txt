@@ -1,0 +1,11 @@
+fastapi
+uvicorn
+anthropic
+openai
+pypdf
+python-multipart
+python-dotenv
+
+# Da aggiungere allo Sprint 2:
+# sqlalchemy
+# psycopg2-binary  (richiede PostgreSQL installato)

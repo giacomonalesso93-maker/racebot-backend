@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>RaceBot — Ticket</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: system-ui, sans-serif; background: #f0f2f5; }
+    header { background: white; padding: 16px 32px; display: flex; align-items: center; justify-content: space-between; box-shadow: 0 1px 4px rgba(0,0,0,0.08); }
+    header h1 { font-size: 22px; color: #2563eb; font-weight: 800; }
+    nav a { color: #374151; text-decoration: none; margin-left: 20px; font-size: 14px; }
+    nav a:hover { color: #2563eb; }
+    .container { max-width: 900px; margin: 40px auto; padding: 0 20px; }
+    h2 { font-size: 20px; color: #111827; margin-bottom: 20px; }
+    .ticket { background: white; border-radius: 10px; padding: 24px; margin-bottom: 16px; box-shadow: 0 2px 8px rgba(0,0,0,0.06); }
+    .ticket-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 12px; }
+    .ticket-meta { font-size: 13px; color: #6b7280; }
+    .badge { font-size: 12px; padding: 4px 10px; border-radius: 20px; font-weight: 500; }
+    .badge.aperto { background: #fee2e2; color: #991b1b; }
+    .badge.risolto { background: #d1fae5; color: #065f46; }
+    .question { font-size: 15px; color: #111827; margin-bottom: 8px; }
+    .reply-box { margin-top: 16px; }
+    .reply-box textarea { width: 100%; padding: 10px 14px; border: 1px solid #d1d5db; border-radius: 8px; font-size: 14px; resize: vertical; min-height: 80px; font-family: inherit; }
+    .reply-box button { margin-top: 8px; padding: 8px 20px; background: #2563eb; color: white; border: none; border-radius: 6px; font-size: 14px; cursor: pointer; }
+    .existing-reply { background: #f0fdf4; border-radius: 8px; padding: 12px; margin-top: 12px; font-size: 14px; color: #065f46; }
+    .empty { text-align: center; color: #9ca3af; padding: 48px; background: white; border-radius: 10px; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>🏃 RaceBot</h1>
+    <nav>
+      <a href="/dashboard">Dashboard</a>
+      <a href="/dashboard/tickets">Ticket</a>
+      <a href="/dashboard/export/tickets" style="color:#2563eb;">⬇️ Esporta CSV</a>
+      <a href="/api/logout" style="color:#ef4444">Esci</a>
+    </nav>
+  </header>
+
+  <div class="container">
+    <h2>Ticket aperti — {{ tickets|length }} totali</h2>
+
+    {% if tickets %}
+      {% for ticket in tickets %}
+      <div class="ticket">
+        <div class="ticket-header">
+          <div>
+            <div class="ticket-meta">{{ ticket.race_name }} · {{ ticket.created_at[:10] if ticket.created_at else '' }}{% if ticket.participant_email %} · {{ ticket.participant_email }}{% endif %}</div>
+            <div class="question">❓ {{ ticket.question }}</div>
+          </div>
+          <span class="badge {{ ticket.status }}">{{ ticket.status }}</span>
+        </div>
+
+        {% if ticket.organizer_reply %}
+          <div class="existing-reply">✅ Risposta inviata: {{ ticket.organizer_reply }}</div>
+        {% else %}
+          <div class="reply-box">
+            <form method="POST" action="/api/tickets/{{ ticket.id }}/reply">
+              <textarea name="reply" placeholder="Scrivi la risposta per il partecipante..."></textarea>
+              <button type="submit">Invia risposta</button>
+            </form>
+          </div>
+        {% endif %}
+      </div>
+      {% endfor %}
+    {% else %}
+      <div class="empty">Nessun ticket per ora. Ottimo lavoro! 🎉</div>
+    {% endif %}
+  </div>
+</body>
+</html>

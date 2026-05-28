@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>RaceBot — Admin Console</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: system-ui, -apple-system, sans-serif; background: #f1f5f9; min-height: 100vh; }
+
+    header {
+      background: linear-gradient(135deg, #0f172a 0%, #1e3a5f 100%);
+      padding: 0 32px; height: 60px; display: flex; align-items: center; justify-content: space-between;
+      box-shadow: 0 2px 12px rgba(0,0,0,0.3);
+    }
+    .header-brand { display: flex; align-items: center; gap: 10px; color: white; font-weight: 700; font-size: 16px; }
+    .header-brand span { font-size: 20px; }
+    .header-badge { background: rgba(255,255,255,0.15); color: rgba(255,255,255,0.85); font-size: 11px; padding: 3px 10px; border-radius: 20px; font-weight: 600; letter-spacing: 0.5px; }
+    header a { color: rgba(255,255,255,0.65); font-size: 13px; text-decoration: none; padding: 6px 12px; border-radius: 7px; }
+    header a:hover { background: rgba(255,255,255,0.1); color: white; }
+
+    .container { max-width: 1100px; margin: 0 auto; padding: 32px 20px 60px; }
+
+    /* Stats aggregate */
+    .agg-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 14px; margin-bottom: 32px; }
+    .agg-card {
+      background: white; border-radius: 14px; padding: 20px 18px;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.06); border: 1px solid #e2e8f0;
+    }
+    .agg-card .agg-label { font-size: 11px; font-weight: 600; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.5px; }
+    .agg-card .agg-value { font-size: 28px; font-weight: 800; color: #0f172a; margin-top: 4px; }
+
+    .plan-dist { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
+    .plan-chip { font-size: 12px; padding: 3px 10px; border-radius: 20px; font-weight: 600; }
+
+    /* Table */
+    .section-title { font-size: 17px; font-weight: 700; color: #0f172a; margin-bottom: 14px; display: flex; align-items: center; gap: 8px; }
+    .table-wrap { background: white; border-radius: 16px; box-shadow: 0 1px 4px rgba(0,0,0,0.06); border: 1px solid #e2e8f0; overflow: hidden; }
+    table { width: 100%; border-collapse: collapse; }
+    th { text-align: left; font-size: 11px; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 0.5px; padding: 12px 16px; background: #f8fafc; border-bottom: 1px solid #e2e8f0; }
+    td { padding: 12px 16px; font-size: 13px; color: #334155; border-bottom: 1px solid #f1f5f9; vertical-align: middle; }
+    tr:last-child td { border-bottom: none; }
+    tr:hover td { background: #f8fafc; }
+
+    .plan-badge { display: inline-block; padding: 3px 10px; border-radius: 20px; font-size: 11px; font-weight: 700; }
+    .org-email { color: #64748b; font-size: 12px; margin-top: 1px; }
+    .race-count { font-size: 12px; color: #64748b; }
+    .expiry-badge { font-size: 11px; }
+    .expiry-ok { color: #15803d; }
+    .expiry-exp { color: #b91c1c; font-weight: 600; }
+
+    /* Edit modal */
+    #edit-modal {
+      display: none; position: fixed; inset: 0;
+      background: rgba(15,23,42,0.55); backdrop-filter: blur(4px);
+      align-items: center; justify-content: center; z-index: 1000;
+    }
+    .edit-box {
+      background: white; border-radius: 18px; padding: 32px;
+      width: 90%; max-width: 480px;
+      box-shadow: 0 24px 64px rgba(0,0,0,0.25);
+    }
+    .edit-box h3 { font-size: 17px; font-weight: 700; color: #0f172a; margin-bottom: 20px; }
+    .edit-org-name { font-size: 15px; font-weight: 600; color: #1e3a5f; margin-bottom: 16px; }
+    .edit-box label { display: block; font-size: 11px; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 0.4px; margin-bottom: 4px; margin-top: 14px; }
+    .edit-box select, .edit-box input[type="date"], .edit-box textarea {
+      width: 100%; padding: 9px 12px; border: 1.5px solid #e5e7eb;
+      border-radius: 9px; font-size: 14px; font-family: inherit; outline: none; background: #fafafa;
+    }
+    .edit-box select:focus, .edit-box input:focus, .edit-box textarea:focus { border-color: #2563eb; background: white; }
+    .edit-box textarea { height: 80px; resize: vertical; }
+    .edit-actions { display: flex; gap: 8px; margin-top: 20px; }
+    .edit-actions button { flex: 1; padding: 10px; border: none; border-radius: 9px; font-size: 14px; font-weight: 600; cursor: pointer; }
+
+    /* Plan select colors */
+    .plan-select-single { border-color: #64748b !important; }
+    .plan-select-base   { border-color: #0891b2 !important; }
+    .plan-select-pro    { border-color: #7c3aed !important; }
+    .plan-select-fed    { border-color: #b45309 !important; }
+
+    .flash-ok { background:#dcfce7; color:#15803d; border:1px solid #bbf7d0; border-radius:10px; padding:12px 18px; margin-bottom:20px; font-size:14px; font-weight:600; }
+
+    @media (max-width: 640px) {
+      table { display: block; overflow-x: auto; }
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="header-brand">
+    <span>🛡️</span> RaceBot Admin
+    <span class="header-badge">SUPER ADMIN</span>
+  </div>
+  <a href="/admin/logout">Esci</a>
+</header>
+
+<div class="container">
+
+  {% if request.query_params.get('ok') %}
+  <div class="flash-ok">✅ {{ request.query_params.get('ok') }}</div>
+  {% endif %}
+
+  <!-- Stats aggregate -->
+  <div class="agg-grid">
+    <div class="agg-card">
+      <div class="agg-label">Organizzatori</div>
+      <div class="agg-value">{{ aggregate.total_organizers }}</div>
+    </div>
+    <div class="agg-card">
+      <div class="agg-label">Gare totali</div>
+      <div class="agg-value">{{ aggregate.total_races }}</div>
+    </div>
+    <div class="agg-card">
+      <div class="agg-label">Domande totali</div>
+      <div class="agg-value">{{ aggregate.total_tickets }}</div>
+    </div>
+    <div class="agg-card" style="grid-column: span 1;">
+      <div class="agg-label">Distribuzione piani</div>
+      <div class="plan-dist" style="margin-top:10px;">
+        {% for label, count in aggregate.plan_counts.items() %}
+        <span class="plan-chip" style="background:#f1f5f9; color:#0f172a;">{{ label }}: <strong>{{ count }}</strong></span>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+
+  <!-- Lista organizzatori -->
+  <div class="section-title">👥 Organizzatori ({{ aggregate.total_organizers }})</div>
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>Organizzatore</th>
+          <th>Piano attivo</th>
+          <th>Gare</th>
+          <th>Scadenza</th>
+          <th>Note</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for org in organizers %}
+        <tr>
+          <td>
+            <div style="font-weight:600; color:#0f172a;">{{ org.name or org.email }}</div>
+            <div class="org-email">{{ org.email }}</div>
+          </td>
+          <td>
+            <span class="plan-badge" style="background:{{ org.plan_color }}20; color:{{ org.plan_color }};">
+              {{ org.plan_label }}
+            </span>
+          </td>
+          <td><span class="race-count">{{ org.race_count }} gare</span></td>
+          <td>
+            {% if org.plan_expires_at %}
+              <span class="expiry-badge {% if org.plan_expires_at < now_str %}expiry-exp{% else %}expiry-ok{% endif %}">
+                {{ org.plan_expires_at[:10] }}
+              </span>
+            {% else %}
+              <span style="color:#94a3b8; font-size:11px;">—</span>
+            {% endif %}
+          </td>
+          <td style="max-width:180px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; color:#64748b; font-size:12px;">
+            {{ org.admin_notes or "—" }}
+          </td>
+          <td>
+            <button class="plan-badge" style="background:#f1f5f9; color:#334155; border:none; cursor:pointer; padding:5px 12px;"
+              onclick="openEdit('{{ org.id }}', '{{ (org.name or org.email)|replace("'","\\'") }}', '{{ org.plan or "single" }}', '{{ (org.plan_expires_at or "")[:10] }}', {{ org.admin_notes | tojson }})">
+              ✏️ Modifica
+            </button>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+</div>
+
+<!-- Modal modifica organizzatore -->
+<div id="edit-modal">
+  <div class="edit-box">
+    <h3>✏️ Modifica organizzatore</h3>
+    <div class="edit-org-name" id="edit-org-name"></div>
+    <form id="edit-form" method="POST">
+      <label>Piano</label>
+      <select name="plan" id="edit-plan" onchange="updatePlanStyle()">
+        {% for p in plan_options %}
+        <option value="{{ p }}">{{ plan_labels[p] }}</option>
+        {% endfor %}
+      </select>
+      <label>Scadenza piano</label>
+      <input type="date" name="plan_expires_at" id="edit-expiry">
+      <label>Note interne</label>
+      <textarea name="admin_notes" id="edit-notes" placeholder="es. cliente Enterprise manuale, in trial, ecc."></textarea>
+      <div class="edit-actions">
+        <button type="submit" style="background:#1e3a5f; color:white;">Salva</button>
+        <button type="button" style="background:#f1f5f9; color:#475569;" onclick="document.getElementById('edit-modal').style.display='none'">Annulla</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script>
+  function openEdit(id, name, plan, expiry, notes) {
+    document.getElementById("edit-org-name").textContent = name;
+    document.getElementById("edit-form").action = `/admin/organizers/${id}/update`;
+    document.getElementById("edit-plan").value = plan;
+    document.getElementById("edit-expiry").value = expiry || "";
+    document.getElementById("edit-notes").value = notes || "";
+    updatePlanStyle();
+    document.getElementById("edit-modal").style.display = "flex";
+  }
+
+  const planColors = {
+    single: "#64748b", base: "#0891b2", pro: "#7c3aed", federation: "#b45309"
+  };
+  function updatePlanStyle() {
+    const sel = document.getElementById("edit-plan");
+    const color = planColors[sel.value] || "#64748b";
+    sel.style.borderColor = color;
+    sel.style.color = color;
+    sel.style.fontWeight = "700";
+  }
+</script>
+</body>
+</html>
