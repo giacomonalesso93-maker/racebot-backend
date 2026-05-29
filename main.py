@@ -489,6 +489,16 @@ async def ask_question(
         "je n'ai pas cette information", "no tengo esta información",
     ]
 
+    # Prepara dizionario posizioni con link per iniezione automatica
+    locs_with_links = {}
+    for loc in locs:
+        if loc.get("google_maps_url"):
+            locs_with_links[loc["name"].lower()] = {
+                "name": loc["name"],
+                "url": loc["google_maps_url"],
+                "type": loc.get("type", "")
+            }
+
     def generate():
         full_answer = []
         try:
@@ -499,6 +509,16 @@ async def ask_question(
                 if chunk.startswith("data: [DONE]"):
                     # Raccogli la risposta completa per logging e ticket
                     answer = "".join(full_answer).replace("\\n", "\n")
+
+                    # Inietta link mappa per le posizioni menzionate nella risposta
+                    mentioned_links = []
+                    answer_lower = answer.lower()
+                    for loc_name_lower, loc_data in locs_with_links.items():
+                        if loc_name_lower in answer_lower and loc_data["url"] not in answer:
+                            mentioned_links.append(f"📍 {loc_data['name']}: {loc_data['url']}")
+                    if mentioned_links:
+                        links_text = "\\n\\n🗺️ **Link mappe:**\\n" + "\\n".join(mentioned_links)
+                        yield f"data: {links_text}\n\n"
                     answered = not any(f in answer.lower() for f in frasi_non_so)
 
                     # Log domanda
