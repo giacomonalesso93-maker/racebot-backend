@@ -921,6 +921,7 @@
           <a href="/dashboard/races/{{ race.id }}/locations" class="btn btn-gray">📍</a>
           <a href="/dashboard/races/{{ race.id }}/qa" class="btn btn-gray">✍️</a>
           <button class="btn btn-gray" onclick="showEmbed('{{ race.id }}', '{{ race.name|replace("'", "\\'") }}')">🔗</button>
+          <button class="btn btn-gray" onclick="openCustomize('{{ race.id }}', '{{ race.chatbot_name|replace("'", "\\'") if race.chatbot_name else "" }}', '{{ race.chatbot_color or "#2563eb" }}', '{{ race.welcome_message|replace("'", "\\'") if race.welcome_message else "" }}', '{{ race.chatbot_logo_url or "" }}')">🎨</button>
           {% if features.gpx_upload %}
             <form method="POST" action="/api/races/{{ race.id }}/upload-gpx" enctype="multipart/form-data" class="inline">
               <input type="file" name="file" accept=".gpx" style="display:none" id="gpx-{{ race.id }}" onchange="this.form.submit()">
@@ -984,6 +985,49 @@
       <div class="modal-actions" style="margin-top:12px;">
         <button class="modal-btn-secondary" onclick="document.getElementById('embed-modal').style.display='none'">Chiudi</button>
       </div>
+    </div>
+  </div>
+
+  <!-- Modal Personalizza Chatbot -->
+  <div id="customize-modal" style="display:none;position:fixed;inset:0;background:rgba(15,23,42,0.6);backdrop-filter:blur(4px);z-index:1000;align-items:center;justify-content:center;padding:20px;">
+    <div style="background:white;border-radius:20px;width:100%;max-width:500px;max-height:90vh;overflow-y:auto;box-shadow:0 24px 60px rgba(0,0,0,0.2);">
+      <div style="padding:24px 24px 0;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid #f1f5f9;padding-bottom:16px;">
+        <h2 style="font-size:18px;font-weight:800;color:#0f172a;">🎨 Personalizza chatbot</h2>
+        <button onclick="document.getElementById('customize-modal').style.display='none'" style="width:32px;height:32px;border-radius:8px;border:none;background:#f1f5f9;cursor:pointer;font-size:16px;color:#64748b;">✕</button>
+      </div>
+      <form id="customize-form" method="POST" enctype="multipart/form-data" style="padding:20px 24px 24px;">
+        <div style="margin-bottom:16px;">
+          <label style="display:block;font-size:13px;font-weight:600;color:#374151;margin-bottom:6px;">Nome chatbot <span style="font-weight:400;color:#94a3b8;">(opzionale, default: nome gara)</span></label>
+          <input type="text" name="chatbot_name" id="c-name" placeholder="es. Assistente Trail Dolomiti" style="width:100%;padding:10px 14px;border:1.5px solid #e2e8f0;border-radius:10px;font-size:14px;outline:none;">
+        </div>
+        <div style="margin-bottom:16px;">
+          <label style="display:block;font-size:13px;font-weight:600;color:#374151;margin-bottom:6px;">Messaggio di benvenuto <span style="font-weight:400;color:#94a3b8;">(opzionale)</span></label>
+          <textarea name="welcome_message" id="c-welcome" placeholder="Ciao! 👋 Sono l'assistente virtuale della tua gara..." style="width:100%;padding:10px 14px;border:1.5px solid #e2e8f0;border-radius:10px;font-size:14px;outline:none;resize:vertical;min-height:90px;font-family:inherit;"></textarea>
+        </div>
+        <div style="margin-bottom:16px;">
+          <label style="display:block;font-size:13px;font-weight:600;color:#374151;margin-bottom:6px;">Colore principale</label>
+          <div style="display:flex;align-items:center;gap:12px;">
+            <input type="color" name="chatbot_color" id="c-color" value="#2563eb" style="width:48px;height:40px;border:1.5px solid #e2e8f0;border-radius:8px;cursor:pointer;padding:2px;">
+            <div style="display:flex;gap:8px;flex-wrap:wrap;">
+              {% for col in ["#2563eb","#7c3aed","#059669","#dc2626","#d97706","#0891b2","#1e293b"] %}
+              <button type="button" onclick="document.getElementById('c-color').value='{{ col }}'" style="width:28px;height:28px;border-radius:50%;background:{{ col }};border:2px solid white;box-shadow:0 0 0 1px #e2e8f0;cursor:pointer;"></button>
+              {% endfor %}
+            </div>
+          </div>
+        </div>
+        <div style="margin-bottom:20px;">
+          <label style="display:block;font-size:13px;font-weight:600;color:#374151;margin-bottom:6px;">Logo gara <span style="font-weight:400;color:#94a3b8;">(opzionale — PNG, JPG, SVG)</span></label>
+          <div id="c-logo-preview" style="display:none;margin-bottom:8px;">
+            <img id="c-logo-img" src="" style="height:48px;border-radius:8px;border:1px solid #e2e8f0;">
+          </div>
+          <input type="file" name="chatbot_logo" accept="image/*" style="font-size:13px;color:#374151;" onchange="previewLogo(this)">
+          <p style="font-size:12px;color:#94a3b8;margin-top:4px;">Se non carichi un logo viene mostrato "Repliq"</p>
+        </div>
+        <div style="display:flex;gap:8px;">
+          <button type="submit" style="flex:1;padding:12px;background:linear-gradient(135deg,#2563eb,#1d4ed8);color:white;border:none;border-radius:10px;font-size:14px;font-weight:700;cursor:pointer;">Salva personalizzazione</button>
+          <button type="button" onclick="document.getElementById('customize-modal').style.display='none'" style="padding:12px 20px;background:#f1f5f9;border:none;border-radius:10px;font-size:14px;color:#64748b;cursor:pointer;">Annulla</button>
+        </div>
+      </form>
     </div>
   </div>
 
@@ -1150,6 +1194,31 @@
     // Auto-hide flash message after 4s
     const flash = document.querySelector(".flash-ok");
     if (flash) setTimeout(() => flash.style.display = "none", 4000);
+
+    // Customize chatbot modal
+    function openCustomize(raceId, chatbotName, chatbotColor, welcomeMsg, logoUrl) {
+      document.getElementById("customize-form").action = `/api/races/${raceId}/chatbot-settings`;
+      document.getElementById("c-name").value = chatbotName || "";
+      document.getElementById("c-color").value = chatbotColor || "#2563eb";
+      document.getElementById("c-welcome").value = welcomeMsg || "";
+      if (logoUrl) {
+        document.getElementById("c-logo-img").src = logoUrl;
+        document.getElementById("c-logo-preview").style.display = "block";
+      } else {
+        document.getElementById("c-logo-preview").style.display = "none";
+      }
+      document.getElementById("customize-modal").style.display = "flex";
+    }
+    function previewLogo(input) {
+      if (input.files && input.files[0]) {
+        const reader = new FileReader();
+        reader.onload = e => {
+          document.getElementById("c-logo-img").src = e.target.result;
+          document.getElementById("c-logo-preview").style.display = "block";
+        };
+        reader.readAsDataURL(input.files[0]);
+      }
+    }
 
     // Guide modal
     function openGuide() { document.getElementById("guide-overlay").classList.add("open"); }

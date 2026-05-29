@@ -17,13 +17,13 @@
 
     /* ── HEADER ── */
     header {
-      background: linear-gradient(135deg, #1e3a8a 0%, #1d4ed8 60%, #2563eb 100%);
+      background: linear-gradient(135deg, {{ race.chatbot_color or '#1e3a8a' }}, {{ race.chatbot_color or '#2563eb' }});
       color: white;
       padding: 0 20px;
       height: 68px;
       display: flex; align-items: center; justify-content: space-between;
       flex-shrink: 0;
-      box-shadow: 0 4px 24px rgba(29,78,216,0.4);
+      box-shadow: 0 4px 24px rgba(0,0,0,0.2);
       position: relative;
       overflow: hidden;
     }
@@ -250,9 +250,15 @@
 
   <header>
     <div class="header-left">
-      <div class="header-avatar">{{ race.sport_type_emoji or "🏃" }}</div>
+      <div class="header-avatar">
+        {% if race.chatbot_logo_url %}
+          <img src="{{ race.chatbot_logo_url }}" style="width:36px;height:36px;object-fit:contain;border-radius:8px;" alt="logo">
+        {% else %}
+          {{ race.sport_type_emoji or "🏃" }}
+        {% endif %}
+      </div>
       <div class="header-info">
-        <h1>{{ race.name }}</h1>
+        <h1>{{ race.chatbot_name or race.name }}</h1>
         <div class="subtitle">
           <span class="online-dot"></span>
           Assistente attivo{% if race.date %} · {{ race.date }}{% endif %}{% if race.start_time %} · 🕐 {{ race.start_time }}{% endif %}
@@ -260,7 +266,9 @@
       </div>
     </div>
     <div class="header-right">
-      <span class="header-brand">Repliq</span>
+      {% if not race.chatbot_logo_url %}
+        <span class="header-brand">Repliq</span>
+      {% endif %}
       <button class="header-btn" onclick="toggleMap()">📍 Mappa</button>
       {% if is_organizer %}<a href="/dashboard" class="header-btn">← Dashboard</a>{% endif %}
     </div>
@@ -274,7 +282,7 @@
   <div class="messages" id="messages">
     <div class="msg-row">
       <div class="msg-avatar">{{ race.sport_type_emoji or "🏃" }}</div>
-      <div class="msg bot">Ciao! 👋 Sono l'assistente virtuale di <strong>{{ race.name }}</strong>.<br>Posso aiutarti con regolamento, logistica, parcheggi, ristori e molto altro.</div>
+      <div class="msg bot">{{ race.welcome_message or "Ciao! 👋 Sono l'assistente virtuale di <strong>" + race.name + "</strong>.<br>Posso aiutarti con regolamento, logistica, parcheggi, ristori e molto altro." }}</div>
     </div>
     <div class="quick-replies" id="quick-replies-welcome">
       <button class="quick-reply-btn" onclick="quickAsk(this, 'Dove parcheggio?')">🅿️ Dove parcheggio?</button>

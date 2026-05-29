@@ -17,6 +17,7 @@ import io
 from fastapi import FastAPI, File, Form, HTTPException, UploadFile, Cookie, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse, RedirectResponse, StreamingResponse
+from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
 load_dotenv(override=True)
@@ -33,6 +34,8 @@ from plans import get_features, plan_label, plan_color, PLAN_LABELS, PLAN_ORDER,
 create_tables()
 
 app = FastAPI(title="RaceBot API", version="0.3.0")
+os.makedirs("static", exist_ok=True)
+app.mount("/static", StaticFiles(directory="static"), name="static")
 
 # ─── ADMIN AUTH ───────────────────────────────────────────────
 ADMIN_SESSIONS: set[str] = set()  # token attivi in memoria
@@ -804,6 +807,40 @@ def api_gpx_track(race_id: str):
     if not result.data:
         return []
     return result.data[0].get("gpx_data") or []
+
+
+@app.post("/api/races/{race_id}/chatbot-settings")
+async def save_chatbot_settings(
+    race_id: str,
+    chatbot_name: str = Form(""),
+    chatbot_color: str = Form("#2563eb"),
+    welcome_message: str = Form(""),
+    chatbot_logo: UploadFile = File(None),
+    session: str = Cookie(default=None)
+):
+    organizer = get_current_organizer(session) if session else None
+    if not organizer:
+        raise HTTPException(status_code=401, detail="Non autenticato")
+
+    update_data = {
+        "chatbot_name": chatbot_name or None,
+        "chatbot_color": chatbot_color or "#2563eb",
+        "welcome_message": welcome_message or None,
+    }
+
+    # Upload logo se fornito
+    if chatbot_logo and chatbot_logo.filename:
+        ext = chatbot_logo.filename.rsplit(".", 1)[-1].lower()
+        if ext in ["png", "jpg", "jpeg", "svg", "webp"]:
+            logo_filename = f"logo_{race_id}.{ext}"
+            logo_path = os.path.join("static", logo_filename)
+            content = await chatbot_logo.read()
+            with open(logo_path, "wb") as f:
+                f.write(content)
+            update_data["chatbot_logo_url"] = f"/static/{logo_filename}"
+
+    supabase.table("races").update(update_data).eq("id", race_id).execute()
+    return RedirectResponse(url=f"/dashboard?ok=Chatbot+personalizzato", status_code=303)
 
 
 @app.get("/dashboard/races/{race_id}/locations", response_class=HTMLResponse)
