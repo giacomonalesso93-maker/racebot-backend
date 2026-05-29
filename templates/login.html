@@ -3,39 +3,269 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>RaceBot — Login</title>
+  <title>Repliq — Login</title>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
-    body { font-family: system-ui, sans-serif; background: #f0f2f5; display: flex; align-items: center; justify-content: center; min-height: 100vh; }
-    .card { background: white; border-radius: 12px; padding: 40px; width: 100%; max-width: 400px; box-shadow: 0 4px 20px rgba(0,0,0,0.1); }
-    .logo { text-align: center; margin-bottom: 32px; }
-    .logo h1 { font-size: 28px; color: #2563eb; font-weight: 800; }
-    .logo p { color: #6b7280; font-size: 14px; margin-top: 4px; }
-    label { display: block; font-size: 14px; font-weight: 500; color: #374151; margin-bottom: 6px; margin-top: 16px; }
-    input { width: 100%; padding: 10px 14px; border: 1px solid #d1d5db; border-radius: 8px; font-size: 15px; outline: none; transition: border-color 0.2s; }
-    input:focus { border-color: #2563eb; }
-    button { width: 100%; margin-top: 24px; padding: 12px; background: #2563eb; color: white; border: none; border-radius: 8px; font-size: 16px; font-weight: 600; cursor: pointer; }
-    button:hover { background: #1d4ed8; }
-    .footer { text-align: center; margin-top: 20px; font-size: 14px; color: #6b7280; }
-    .footer a { color: #2563eb; text-decoration: none; }
+
+    body {
+      font-family: system-ui, -apple-system, sans-serif;
+      min-height: 100vh;
+      display: flex;
+      background: #f8fafc;
+    }
+
+    /* Left panel */
+    .left {
+      display: none;
+      flex: 1;
+      background: linear-gradient(135deg, #1e40af 0%, #3b82f6 50%, #60a5fa 100%);
+      padding: 60px;
+      flex-direction: column;
+      justify-content: space-between;
+      position: relative;
+      overflow: hidden;
+    }
+    @media(min-width: 900px) { .left { display: flex; } }
+
+    .left::before {
+      content: '';
+      position: absolute;
+      top: -100px; right: -100px;
+      width: 400px; height: 400px;
+      background: rgba(255,255,255,0.07);
+      border-radius: 50%;
+    }
+    .left::after {
+      content: '';
+      position: absolute;
+      bottom: -80px; left: -80px;
+      width: 300px; height: 300px;
+      background: rgba(255,255,255,0.05);
+      border-radius: 50%;
+    }
+
+    .left-logo {
+      position: relative; z-index: 1;
+    }
+    .left-logo svg { height: 40px; }
+
+    .left-content {
+      position: relative; z-index: 1;
+    }
+    .left-content h2 {
+      color: white;
+      font-size: 32px;
+      font-weight: 800;
+      line-height: 1.2;
+      margin-bottom: 16px;
+    }
+    .left-content p {
+      color: rgba(255,255,255,0.75);
+      font-size: 16px;
+      line-height: 1.6;
+    }
+
+    .left-stats {
+      display: flex;
+      gap: 32px;
+      position: relative; z-index: 1;
+    }
+    .stat { color: white; }
+    .stat-num { font-size: 28px; font-weight: 800; }
+    .stat-label { font-size: 12px; color: rgba(255,255,255,0.65); margin-top: 2px; }
+
+    /* Right panel */
+    .right {
+      width: 100%;
+      max-width: 480px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 40px 32px;
+      background: white;
+    }
+    @media(min-width: 900px) { .right { box-shadow: -8px 0 40px rgba(0,0,0,0.06); } }
+
+    .form-wrap { width: 100%; max-width: 360px; }
+
+    .mobile-logo {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 40px;
+    }
+    @media(min-width: 900px) { .mobile-logo { display: none; } }
+    .mobile-logo svg { height: 36px; }
+
+    .form-title {
+      font-size: 26px;
+      font-weight: 800;
+      color: #0f172a;
+      margin-bottom: 6px;
+    }
+    .form-subtitle {
+      color: #64748b;
+      font-size: 14px;
+      margin-bottom: 32px;
+    }
+
+    {% if error %}
+    .error-box {
+      background: #fef2f2;
+      border: 1px solid #fecaca;
+      color: #dc2626;
+      padding: 12px 16px;
+      border-radius: 10px;
+      font-size: 14px;
+      margin-bottom: 20px;
+    }
+    {% endif %}
+
+    .field { margin-bottom: 18px; }
+    .field label {
+      display: block;
+      font-size: 13px;
+      font-weight: 600;
+      color: #374151;
+      margin-bottom: 6px;
+    }
+    .field input {
+      width: 100%;
+      padding: 11px 14px;
+      border: 1.5px solid #e2e8f0;
+      border-radius: 10px;
+      font-size: 15px;
+      outline: none;
+      transition: border-color 0.2s, box-shadow 0.2s;
+      color: #0f172a;
+      background: #f8fafc;
+    }
+    .field input:focus {
+      border-color: #3b82f6;
+      box-shadow: 0 0 0 3px rgba(59,130,246,0.12);
+      background: white;
+    }
+    .field input::placeholder { color: #94a3b8; }
+
+    .btn {
+      width: 100%;
+      padding: 13px;
+      background: linear-gradient(135deg, #2563eb, #1d4ed8);
+      color: white;
+      border: none;
+      border-radius: 10px;
+      font-size: 15px;
+      font-weight: 700;
+      cursor: pointer;
+      margin-top: 8px;
+      transition: opacity 0.2s, transform 0.1s;
+      letter-spacing: 0.2px;
+    }
+    .btn:hover { opacity: 0.92; transform: translateY(-1px); }
+    .btn:active { transform: translateY(0); }
+
+    .form-footer {
+      text-align: center;
+      margin-top: 24px;
+      font-size: 14px;
+      color: #64748b;
+    }
+    .form-footer a {
+      color: #2563eb;
+      font-weight: 600;
+      text-decoration: none;
+    }
+    .form-footer a:hover { text-decoration: underline; }
   </style>
 </head>
 <body>
-  <div class="card">
-    <div class="logo">
-      <h1>🏃 RaceBot</h1>
-      <p>Pannello Organizzatore</p>
+
+  <!-- Left decorative panel -->
+  <div class="left">
+    <div class="left-logo">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 56" fill="none">
+        <rect x="0" y="0" width="48" height="44" rx="11" fill="rgba(255,255,255,0.25)"/>
+        <path d="M9 44 L4 55 L22 46" fill="rgba(255,255,255,0.2)"/>
+        <rect x="13" y="10" width="6" height="22" rx="2" fill="white"/>
+        <path d="M19 10 C19 10 32 10 32 17 C32 24 19 24 19 24 Z" fill="white"/>
+        <line x1="21" y1="23" x2="33" y2="33" stroke="white" stroke-width="5.5" stroke-linecap="round"/>
+        <circle cx="17" cy="38" r="1.8" fill="white" opacity="0.8"/>
+        <circle cx="24" cy="38" r="1.8" fill="white" opacity="0.8"/>
+        <circle cx="31" cy="38" r="1.8" fill="white" opacity="0.8"/>
+        <text x="56" y="32" font-family="system-ui, sans-serif" font-size="24" font-weight="800" fill="white" letter-spacing="-0.5">Repliq</text>
+        <text x="57" y="46" font-family="system-ui, sans-serif" font-size="9" font-weight="400" fill="rgba(255,255,255,0.7)">AI communication for sport events</text>
+      </svg>
     </div>
-    <form method="POST" action="/api/login">
-      <label for="email">Email</label>
-      <input type="email" id="email" name="email" placeholder="tuaemail@esempio.it" required>
-      <label for="password">Password</label>
-      <input type="password" id="password" name="password" placeholder="••••••••" required>
-      <button type="submit">Accedi</button>
-    </form>
-    <div class="footer">
-      Non hai un account? <a href="/register">Registrati</a>
+
+    <div class="left-content">
+      <h2>Il chatbot AI per i tuoi eventi sportivi</h2>
+      <p>Gestisci le domande dei partecipanti H24, automatizza le comunicazioni e concentrati su ciò che conta — organizzare la gara perfetta.</p>
+    </div>
+
+    <div class="left-stats">
+      <div class="stat">
+        <div class="stat-num">H24</div>
+        <div class="stat-label">Risposte automatiche</div>
+      </div>
+      <div class="stat">
+        <div class="stat-num">5 min</div>
+        <div class="stat-label">Setup iniziale</div>
+      </div>
+      <div class="stat">
+        <div class="stat-num">0</div>
+        <div class="stat-label">Messaggi persi</div>
+      </div>
     </div>
   </div>
+
+  <!-- Right form panel -->
+  <div class="right">
+    <div class="form-wrap">
+
+      <div class="mobile-logo">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 56" fill="none">
+          <rect x="0" y="0" width="48" height="44" rx="11" fill="url(#mg)"/>
+          <defs>
+            <linearGradient id="mg" x1="0" y1="0" x2="1" y2="1">
+              <stop offset="0%" stop-color="#60a5fa"/>
+              <stop offset="100%" stop-color="#1d4ed8"/>
+            </linearGradient>
+          </defs>
+          <path d="M9 44 L4 55 L22 46" fill="#1d4ed8"/>
+          <rect x="13" y="10" width="6" height="22" rx="2" fill="white"/>
+          <path d="M19 10 C19 10 32 10 32 17 C32 24 19 24 19 24 Z" fill="white"/>
+          <line x1="21" y1="23" x2="33" y2="33" stroke="white" stroke-width="5.5" stroke-linecap="round"/>
+          <circle cx="17" cy="38" r="1.8" fill="white" opacity="0.8"/>
+          <circle cx="24" cy="38" r="1.8" fill="white" opacity="0.8"/>
+          <circle cx="31" cy="38" r="1.8" fill="white" opacity="0.8"/>
+          <text x="56" y="32" font-family="system-ui, sans-serif" font-size="24" font-weight="800" fill="#1e2d5a" letter-spacing="-0.5">Repliq</text>
+        </svg>
+      </div>
+
+      <div class="form-title">Bentornato</div>
+      <div class="form-subtitle">Accedi al tuo pannello organizzatore</div>
+
+      {% if error %}
+      <div class="error-box">{{ error }}</div>
+      {% endif %}
+
+      <form method="POST" action="/api/login">
+        <div class="field">
+          <label for="email">Email</label>
+          <input type="email" id="email" name="email" placeholder="tuaemail@esempio.it" required autocomplete="email">
+        </div>
+        <div class="field">
+          <label for="password">Password</label>
+          <input type="password" id="password" name="password" placeholder="••••••••" required autocomplete="current-password">
+        </div>
+        <button type="submit" class="btn">Accedi →</button>
+      </form>
+
+      <div class="form-footer">
+        Non hai un account? <a href="/register">Registrati gratis</a>
+      </div>
+    </div>
+  </div>
+
 </body>
 </html>
