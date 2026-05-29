@@ -510,14 +510,16 @@ async def ask_question(
                     # Raccogli la risposta completa per logging e ticket
                     answer = "".join(full_answer).replace("\\n", "\n")
 
-                    # Inietta link mappa per le posizioni menzionate nella risposta
-                    mentioned_links = []
+                    # Inietta link mappa automaticamente se ci sono posizioni con link
+                    location_keywords = ["parcheggio", "parking", "partenza", "arrivo", "ristoro", "deposito", "bagno", "posizione", "dove", "mappa", "maps", "naviga", "indirizzo"]
+                    question_lower = question.lower()
                     answer_lower = answer.lower()
-                    for loc_name_lower, loc_data in locs_with_links.items():
-                        if loc_name_lower in answer_lower and loc_data["url"] not in answer:
-                            mentioned_links.append(f"📍 {loc_data['name']}: {loc_data['url']}")
-                    if mentioned_links:
-                        links_text = "\\n\\n🗺️ **Link mappe:**\\n" + "\\n".join(mentioned_links)
+                    is_location_question = any(kw in question_lower or kw in answer_lower for kw in location_keywords)
+
+                    if locs_with_links and is_location_question:
+                        links_text = "\\n\\n🗺️ **Link mappe:**"
+                        for loc_data in locs_with_links.values():
+                            links_text += f"\\n📍 {loc_data['name']}: {loc_data['url']}"
                         yield f"data: {links_text}\n\n"
                     answered = not any(f in answer.lower() for f in frasi_non_so)
 
