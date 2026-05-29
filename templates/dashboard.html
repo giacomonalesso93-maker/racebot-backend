@@ -859,6 +859,7 @@
               <a href="/chat/{{ race.id }}" class="btn btn-blue btn-sm" target="_blank">💬</a>
               <a href="/dashboard/races/{{ race.id }}/locations" class="btn btn-gray btn-sm">📍</a>
               <a href="/dashboard/races/{{ race.id }}/qa" class="btn btn-gray btn-sm">✍️</a>
+              <button class="btn btn-gray btn-sm" onclick="openCustomize('{{ race.id }}', '{{ race.chatbot_name|replace("'", "\\'") if race.chatbot_name else "" }}', '{{ race.chatbot_color or "#2563eb" }}', '{{ race.welcome_message|replace("'", "\\'") if race.welcome_message else "" }}', '{{ race.chatbot_logo_url or "" }}')">🎨</button>
               {% if race.pdf_uploaded %}
                 <form method="POST" action="/api/races/{{ race.id }}/upload" enctype="multipart/form-data" class="inline">
                   <input type="file" name="file" accept=".pdf" id="epdf-{{ race.id }}" style="display:none" onchange="this.form.submit()">
