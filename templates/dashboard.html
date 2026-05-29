@@ -299,6 +299,89 @@
       .event-header { flex-direction: column; gap: 12px; align-items: flex-start; }
       .standalone-race { flex-direction: column; align-items: flex-start; gap: 12px; }
     }
+
+    /* ── MODAL IMPOSTAZIONI / GUIDA ── */
+    .overlay {
+      display: none; position: fixed; inset: 0;
+      background: rgba(15,23,42,0.6); backdrop-filter: blur(4px);
+      z-index: 1000; align-items: center; justify-content: center;
+      padding: 20px;
+    }
+    .overlay.open { display: flex; }
+    .modal-panel {
+      background: white; border-radius: 20px;
+      width: 100%; max-width: 560px;
+      max-height: 85vh; overflow-y: auto;
+      box-shadow: 0 24px 60px rgba(0,0,0,0.2);
+      animation: popIn 0.2s ease;
+    }
+    @keyframes popIn { from{transform:scale(0.95);opacity:0;} to{transform:scale(1);opacity:1;} }
+    .modal-panel-header {
+      padding: 24px 24px 0;
+      display: flex; align-items: center; justify-content: space-between;
+      border-bottom: 1px solid #f1f5f9; padding-bottom: 16px;
+    }
+    .modal-panel-header h2 { font-size: 18px; font-weight: 800; color: #0f172a; }
+    .modal-close {
+      width: 32px; height: 32px; border-radius: 8px; border: none;
+      background: #f1f5f9; cursor: pointer; font-size: 16px; color: #64748b;
+      display: flex; align-items: center; justify-content: center;
+      transition: background 0.15s;
+    }
+    .modal-close:hover { background: #e2e8f0; }
+    .modal-panel-body { padding: 20px 24px 24px; }
+
+    /* Impostazioni */
+    .settings-section { margin-bottom: 24px; }
+    .settings-section h3 { font-size: 12px; font-weight: 700; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.8px; margin-bottom: 12px; }
+    .settings-item {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 12px 14px; border-radius: 12px; background: #f8fafc;
+      border: 1px solid #f1f5f9; margin-bottom: 8px;
+    }
+    .settings-item-left { display: flex; align-items: center; gap: 12px; }
+    .settings-icon { font-size: 18px; }
+    .settings-label { font-size: 14px; font-weight: 600; color: #0f172a; }
+    .settings-desc { font-size: 12px; color: #64748b; margin-top: 1px; }
+    .settings-action { font-size: 13px; color: #2563eb; font-weight: 600; cursor: pointer; text-decoration: none; }
+    .settings-action:hover { text-decoration: underline; }
+    .settings-toggle {
+      width: 44px; height: 24px; border-radius: 12px; background: #e2e8f0;
+      border: none; cursor: pointer; position: relative; transition: background 0.2s;
+    }
+    .settings-toggle.on { background: #2563eb; }
+    .settings-toggle::after {
+      content: ''; position: absolute; top: 3px; left: 3px;
+      width: 18px; height: 18px; background: white; border-radius: 50%;
+      transition: transform 0.2s; box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+    }
+    .settings-toggle.on::after { transform: translateX(20px); }
+
+    /* Guida */
+    .guide-step {
+      display: flex; gap: 16px; margin-bottom: 20px; align-items: flex-start;
+    }
+    .guide-num {
+      width: 32px; height: 32px; border-radius: 10px; flex-shrink: 0;
+      background: linear-gradient(135deg, #2563eb, #1d4ed8);
+      color: white; font-size: 14px; font-weight: 800;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .guide-content h4 { font-size: 14px; font-weight: 700; color: #0f172a; margin-bottom: 4px; }
+    .guide-content p { font-size: 13px; color: #64748b; line-height: 1.6; }
+    .guide-tag {
+      display: inline-block; font-size: 11px; font-weight: 600;
+      padding: 2px 8px; border-radius: 20px; margin-top: 6px;
+    }
+    .guide-tag.base { background: #dbeafe; color: #1d4ed8; }
+    .guide-tag.pro { background: #ede9fe; color: #7c3aed; }
+    .plan-info-box {
+      background: linear-gradient(135deg, #eff6ff, #f5f3ff);
+      border: 1px solid #c7d2fe; border-radius: 12px;
+      padding: 16px; margin-bottom: 20px;
+    }
+    .plan-info-box h4 { font-size: 13px; font-weight: 700; color: #1e40af; margin-bottom: 4px; }
+    .plan-info-box p { font-size: 13px; color: #4338ca; }
   </style>
 </head>
 <body>
@@ -318,10 +401,218 @@
           </span>
         {% endif %}
         <a href="/dashboard/stats">📊 Statistiche</a>
+        <a href="#" onclick="openGuide();return false;">❓ Guida</a>
+        <a href="#" onclick="openSettings();return false;">⚙️ Impostazioni</a>
         <a href="/api/logout" class="logout">Esci</a>
       </nav>
     </div>
   </header>
+
+  <!-- MODAL GUIDA -->
+  <div class="overlay" id="guide-overlay" onclick="if(event.target===this)closeGuide()">
+    <div class="modal-panel">
+      <div class="modal-panel-header">
+        <h2>❓ Come usare Repliq</h2>
+        <button class="modal-close" onclick="closeGuide()">✕</button>
+      </div>
+      <div class="modal-panel-body">
+
+        <div class="plan-info-box">
+          <h4>Piano attivo: {{ plan_label }}</h4>
+          <p>Stai usando il piano <strong>{{ plan_label }}</strong>. Alcune funzionalità potrebbero essere limitate in base al tuo piano.</p>
+        </div>
+
+        <div class="guide-step">
+          <div class="guide-num">1</div>
+          <div class="guide-content">
+            <h4>Crea una gara o un evento</h4>
+            <p>Inizia creando una gara standalone oppure un evento con più distanze. Inserisci data, luogo, lunghezza, dislivello e orario di partenza.</p>
+            <span class="guide-tag base">Tutti i piani</span>
+          </div>
+        </div>
+
+        <div class="guide-step">
+          <div class="guide-num">2</div>
+          <div class="guide-content">
+            <h4>Carica il regolamento</h4>
+            <p>Carica il PDF ufficiale della gara oppure inserisci il testo direttamente. Repliq lo legge automaticamente con tecnologia RAG e risponde alle domande basandosi sui contenuti reali.</p>
+            <span class="guide-tag base">Tutti i piani</span>
+          </div>
+        </div>
+
+        <div class="guide-step">
+          <div class="guide-num">3</div>
+          <div class="guide-content">
+            <h4>Aggiungi posizioni e logistica</h4>
+            <p>Vai su "📍 Posizioni" per aggiungere parcheggi, partenza, arrivo, ristori, bagni e deposito sacche. Ogni punto può avere coordinate GPS, link a Google Maps e dotazione (es. acqua, sali, frutta).</p>
+            <span class="guide-tag base">Tutti i piani</span>
+          </div>
+        </div>
+
+        <div class="guide-step">
+          <div class="guide-num">4</div>
+          <div class="guide-content">
+            <h4>Carica il tracciato GPX</h4>
+            <p>Importa il file GPX del percorso. I partecipanti vedranno la traccia completa sulla mappa con tutti i punti di interesse sovrapposti.</p>
+            <span class="guide-tag base">Piano Base+</span>
+          </div>
+        </div>
+
+        <div class="guide-step">
+          <div class="guide-num">5</div>
+          <div class="guide-content">
+            <h4>Aggiungi risposte personalizzate</h4>
+            <p>Vai su "💬 Q&A" per aggiungere risposte precise a domande frequenti della tua gara. Il chatbot le userà esattamente come le scrivi tu.</p>
+            <span class="guide-tag base">Tutti i piani</span>
+          </div>
+        </div>
+
+        <div class="guide-step">
+          <div class="guide-num">6</div>
+          <div class="guide-content">
+            <h4>Condividi il link o il QR code</h4>
+            <p>Ogni gara ha una pagina pubblica con QR code. Condividilo sui social, nelle email di iscrizione o stampalo sulla mappa della gara. I partecipanti accedono direttamente al chatbot.</p>
+            <span class="guide-tag base">Tutti i piani</span>
+          </div>
+        </div>
+
+        <div class="guide-step">
+          <div class="guide-num">7</div>
+          <div class="guide-content">
+            <h4>Gestisci i ticket</h4>
+            <p>Quando il chatbot non sa rispondere, crea automaticamente un ticket. Ricevi una notifica email, rispondi dal pannello e la risposta viene inviata al partecipante.</p>
+            <span class="guide-tag pro">Piano Pro</span>
+          </div>
+        </div>
+
+        <div class="guide-step">
+          <div class="guide-num">8</div>
+          <div class="guide-content">
+            <h4>Analizza le statistiche</h4>
+            <p>Controlla quante domande riceve il chatbot, quali sono le più frequenti e quali restano senza risposta. Utile per migliorare la documentazione della prossima edizione.</p>
+            <span class="guide-tag base">Tutti i piani</span>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL IMPOSTAZIONI -->
+  <div class="overlay" id="settings-overlay" onclick="if(event.target===this)closeSettings()">
+    <div class="modal-panel">
+      <div class="modal-panel-header">
+        <h2>⚙️ Impostazioni</h2>
+        <button class="modal-close" onclick="closeSettings()">✕</button>
+      </div>
+      <div class="modal-panel-body">
+
+        <div class="settings-section">
+          <h3>Account</h3>
+          <div class="settings-item">
+            <div class="settings-item-left">
+              <span class="settings-icon">👤</span>
+              <div>
+                <div class="settings-label">{{ organizer.name }}</div>
+                <div class="settings-desc">{{ organizer.email }}</div>
+              </div>
+            </div>
+          </div>
+          <div class="settings-item">
+            <div class="settings-item-left">
+              <span class="settings-icon">🏅</span>
+              <div>
+                <div class="settings-label">Piano attivo</div>
+                <div class="settings-desc">{{ plan_label }}</div>
+              </div>
+            </div>
+            <a href="https://repliq.it/pricing" target="_blank" class="settings-action">Upgrade →</a>
+          </div>
+        </div>
+
+        <div class="settings-section">
+          <h3>Chatbot</h3>
+          <div class="settings-item">
+            <div class="settings-item-left">
+              <span class="settings-icon">🌍</span>
+              <div>
+                <div class="settings-label">Multilingua automatico</div>
+                <div class="settings-desc">Il chatbot risponde nella lingua del partecipante</div>
+              </div>
+            </div>
+            <button class="settings-toggle on" onclick="this.classList.toggle('on')" title="Sempre attivo"></button>
+          </div>
+          <div class="settings-item">
+            <div class="settings-item-left">
+              <span class="settings-icon">🌤️</span>
+              <div>
+                <div class="settings-label">Previsioni meteo</div>
+                <div class="settings-desc">Mostra meteo gara quando disponibile</div>
+              </div>
+            </div>
+            <button class="settings-toggle on" onclick="this.classList.toggle('on')"></button>
+          </div>
+          <div class="settings-item">
+            <div class="settings-item-left">
+              <span class="settings-icon">🎟️</span>
+              <div>
+                <div class="settings-label">Ticketing automatico</div>
+                <div class="settings-desc">Crea ticket quando il chatbot non sa rispondere</div>
+              </div>
+            </div>
+            {% if features.ticketing %}
+            <button class="settings-toggle on" onclick="this.classList.toggle('on')"></button>
+            {% else %}
+            <span style="font-size:12px;color:#94a3b8;">🔒 Piano Pro</span>
+            {% endif %}
+          </div>
+        </div>
+
+        <div class="settings-section">
+          <h3>Notifiche</h3>
+          <div class="settings-item">
+            <div class="settings-item-left">
+              <span class="settings-icon">📧</span>
+              <div>
+                <div class="settings-label">Email nuovi ticket</div>
+                <div class="settings-desc">Ricevi email quando arriva un nuovo ticket</div>
+              </div>
+            </div>
+            {% if features.ticketing %}
+            <button class="settings-toggle on" onclick="this.classList.toggle('on')"></button>
+            {% else %}
+            <span style="font-size:12px;color:#94a3b8;">🔒 Piano Pro</span>
+            {% endif %}
+          </div>
+        </div>
+
+        <div class="settings-section">
+          <h3>Account</h3>
+          <div class="settings-item">
+            <div class="settings-item-left">
+              <span class="settings-icon">🔑</span>
+              <div>
+                <div class="settings-label">Cambia password</div>
+                <div class="settings-desc">Modifica la password del tuo account</div>
+              </div>
+            </div>
+            <a href="/change-password" class="settings-action">Modifica →</a>
+          </div>
+          <div class="settings-item">
+            <div class="settings-item-left">
+              <span class="settings-icon">🚪</span>
+              <div>
+                <div class="settings-label">Logout</div>
+                <div class="settings-desc">Esci dal tuo account</div>
+              </div>
+            </div>
+            <a href="/api/logout" class="settings-action" style="color:#ef4444;">Esci →</a>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
 
   <div class="container">
 
@@ -847,6 +1138,19 @@
     // Auto-hide flash message after 4s
     const flash = document.querySelector(".flash-ok");
     if (flash) setTimeout(() => flash.style.display = "none", 4000);
+
+    // Guide modal
+    function openGuide() { document.getElementById("guide-overlay").classList.add("open"); }
+    function closeGuide() { document.getElementById("guide-overlay").classList.remove("open"); }
+
+    // Settings modal
+    function openSettings() { document.getElementById("settings-overlay").classList.add("open"); }
+    function closeSettings() { document.getElementById("settings-overlay").classList.remove("open"); }
+
+    // Close modals with Escape
+    document.addEventListener("keydown", e => {
+      if (e.key === "Escape") { closeGuide(); closeSettings(); }
+    });
   </script>
 </body>
 </html>
