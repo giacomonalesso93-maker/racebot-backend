@@ -451,7 +451,7 @@ async def ask_question(
     locs = get_locations(race_id)
     location_context = ""
     if locs:
-        lines = ["Posizioni e punti logistici della gara:"]
+        lines = ["Posizioni e punti logistici della gara (IMPORTANTE: quando menzioni una posizione che ha un link mappa, includi SEMPRE il link esatto nella risposta):"]
         for loc in locs:
             line = f"- {loc['name']} ({loc['type']})"
             if loc.get("notes"):
@@ -459,7 +459,7 @@ async def ask_question(
             if loc.get("provisions"):
                 line += f" — Dotazione: {loc['provisions']}"
             if loc.get("google_maps_url"):
-                line += f" — Link mappa: {loc['google_maps_url']}"
+                line += f"\n  → LINK MAPPA DA INCLUDERE NELLA RISPOSTA: {loc['google_maps_url']}"
             lines.append(line)
         location_context = "\n".join(lines)
 
