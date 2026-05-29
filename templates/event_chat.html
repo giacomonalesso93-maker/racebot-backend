@@ -236,11 +236,11 @@
               var payload = line.slice(6);
               if (payload === "[DONE]") {
                 // controlla ticket nel testo finale non serve — arriva via SSE extra
-              } else if (payload.startsWith("{")) {
+              } else if (payload.startsWith("[META]")) {
                 try {
-                  var json = JSON.parse(payload);
-                  if (json.ticket_creato && json.ticket_id) {
-                    pendingTicketId = json.ticket_id;
+                  var meta = JSON.parse(payload.slice(6));
+                  if (meta.ticket_creato && meta.ticket_id) {
+                    pendingTicketId = meta.ticket_id;
                     setTimeout(function() {
                       document.getElementById("email-modal").style.display = "flex";
                     }, 800);
@@ -248,7 +248,7 @@
                 } catch(e) {}
               } else {
                 fullText += payload.replace(/\\n/g, "\n");
-                botMsg.innerHTML = fullText.replace(/\n/g, "<br>");
+                botMsg.innerHTML = fullText.replace(/\n/g, "<br>").replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>");
                 var messages = document.getElementById("messages");
                 messages.scrollTop = messages.scrollHeight;
               }
