@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>RaceBot — Dashboard</title>
+  <title>Repliq — Dashboard</title>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -304,7 +304,7 @@
 <body>
   <header>
     <div class="header-logo">
-      <span>🏃</span> RaceBot
+      Repliq
     </div>
     <div style="display:flex; align-items:center;">
       <span class="header-user">Ciao, {{ organizer.name }}</span>
@@ -366,7 +366,7 @@
     <!-- ── ONBOARDING (solo se non ci sono ancora gare/eventi) ── -->
     {% if not races and not events %}
     <div class="onboarding">
-      <h2>👋 Benvenuto in RaceBot, {{ organizer.name }}!</h2>
+      <h2>👋 Benvenuto in Repliq, {{ organizer.name }}!</h2>
       <p>Configura il chatbot della tua gara in pochi minuti. Ecco come iniziare:</p>
       <div class="onboarding-steps">
         <div class="onboarding-step">
