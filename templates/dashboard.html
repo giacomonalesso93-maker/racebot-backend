@@ -295,21 +295,46 @@
       border-radius: 10px; padding: 10px 14px; font-size: 13px; margin-bottom: 14px;
     }
 
-    @media (max-width: 680px) {
+    @media (max-width: 768px) {
+      /* Header */
+      header { padding: 10px 14px; height: auto; flex-wrap: wrap; gap: 8px; min-height: 56px; }
+      .header-logo { font-size: 17px; }
+      .header-user { display: none; }
+      .plan-badge-header { font-size: 10px; padding: 3px 8px; margin-right: 4px; }
+      .header-nav { gap: 2px; flex-wrap: wrap; }
+      .header-nav a { padding: 5px 8px; font-size: 11px; border-radius: 6px; }
+
+      /* Layout */
+      .container { padding: 14px 12px 48px; }
       .create-grid { grid-template-columns: 1fr; }
       .form-row { grid-template-columns: 1fr; }
-      .event-header { flex-direction: column; gap: 12px; align-items: flex-start; }
-      .standalone-race { flex-direction: column; align-items: flex-start; gap: 12px; }
-      header { padding: 10px 14px; flex-wrap: wrap; gap: 8px; }
-      .header-logo { font-size: 16px; }
-      .header-user { display: none; }
-      .header-nav { gap: 4px; flex-wrap: wrap; }
-      .header-nav a { padding: 5px 8px; font-size: 11px; }
-      .plan-badge-header { font-size: 10px; padding: 3px 8px; }
-      .container { padding: 16px 12px; }
-      .stats-row { grid-template-columns: repeat(2, 1fr); }
-      .race-actions { flex-wrap: wrap; }
-      .btn-sm { font-size: 11px; padding: 5px 8px; }
+      .stats-bar { grid-template-columns: repeat(2, 1fr); gap: 10px; margin-bottom: 20px; }
+      .stat-card { padding: 14px; gap: 10px; }
+      .stat-value { font-size: 20px; }
+      .stat-label { font-size: 11px; }
+
+      /* Event card */
+      .event-header { flex-direction: column; gap: 10px; align-items: flex-start; padding: 14px 16px; }
+      .event-header-actions { flex-wrap: wrap; gap: 6px; }
+      .event-header-actions .btn { font-size: 11px; padding: 5px 9px; }
+
+      /* Race card — stack verticale */
+      .race-card { flex-direction: column; align-items: flex-start; gap: 10px; padding: 12px; }
+      .race-card-left { width: 100%; }
+      .race-actions { flex-wrap: wrap; gap: 5px; width: 100%; }
+      .race-actions .btn, .race-actions a, .race-actions button { font-size: 11px; padding: 5px 9px; }
+
+      /* Standalone race */
+      .standalone-race { flex-direction: column; align-items: flex-start; gap: 10px; padding: 14px 16px; }
+      .standalone-race .race-actions { flex-wrap: wrap; gap: 5px; width: 100%; }
+
+      /* Section header */
+      .section-header { margin-top: 24px; margin-bottom: 14px; }
+      .section-header h2 { font-size: 16px; }
+
+      /* Edit modal */
+      .edit-form-row { grid-template-columns: 1fr; }
+      .edit-box { padding: 20px; }
     }
 
     /* ── MODAL IMPOSTAZIONI / GUIDA ── */
