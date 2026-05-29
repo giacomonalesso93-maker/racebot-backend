@@ -514,17 +514,33 @@ async def ask_question(
                     # Raccogli la risposta completa per logging e ticket
                     answer = "".join(full_answer).replace("\\n", "\n")
 
-                    # Inietta link mappa automaticamente se ci sono posizioni con link
-                    location_keywords = ["parcheggio", "parking", "partenza", "arrivo", "ristoro", "deposito", "bagno", "posizione", "dove", "mappa", "maps", "naviga", "indirizzo"]
+                    # Inietta link mappa solo per i tipi di posizione rilevanti alla domanda
+                    type_keywords = {
+                        "parcheggio": ["parcheggio", "parking", "parcheggi", "park"],
+                        "partenza": ["partenza", "start", "dove si parte", "dove parto"],
+                        "arrivo": ["arrivo", "finish", "traguardo", "dove si arriva"],
+                        "ristoro": ["ristoro", "ristori", "acqua", "rifornimento", "mangiare", "bere"],
+                        "punto_medico": ["medico", "pronto soccorso", "ambulanza", "emergenza"],
+                        "altro": [],
+                    }
                     question_lower = question.lower()
-                    answer_lower = answer.lower()
-                    is_location_question = any(kw in question_lower or kw in answer_lower for kw in location_keywords)
+                    relevant_types = set()
+                    for loc_type, keywords in type_keywords.items():
+                        if any(kw in question_lower for kw in keywords):
+                            relevant_types.add(loc_type)
 
-                    if locs_with_links and is_location_question:
-                        links_text = "\\n\\n🗺️ **Link mappe:**"
-                        for loc_data in locs_with_links.values():
-                            links_text += f"\\n📍 {loc_data['name']}: {loc_data['url']}"
-                        yield f"data: {links_text}\n\n"
+                    # Se non ha trovato tipi specifici ma è una domanda generica su posizioni
+                    generic_keywords = ["dove", "mappa", "maps", "indirizzo", "posizione", "naviga", "location"]
+                    if not relevant_types and any(kw in question_lower for kw in generic_keywords):
+                        relevant_types = set(type_keywords.keys())
+
+                    if locs_with_links and relevant_types:
+                        matching = [loc for loc in locs_with_links.values() if loc["type"] in relevant_types]
+                        if matching:
+                            links_text = "\\n\\n🗺️ **Link mappe:**"
+                            for loc_data in matching:
+                                links_text += f"\\n📍 {loc_data['name']}: {loc_data['url']}"
+                            yield f"data: {links_text}\n\n"
                     answered = not any(f in answer.lower() for f in frasi_non_so)
 
                     # Log domanda
