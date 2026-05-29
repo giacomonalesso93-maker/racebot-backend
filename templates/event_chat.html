@@ -210,24 +210,57 @@
       try {
         var formData = new FormData();
         formData.append("question", question);
-        var res = await fetch("/api/ask/" + currentRaceId, { method: "POST", body: formData });
-        var data = await res.json();
-        typing.remove();
+        formData.append("history", JSON.stringify(conversationHistory || []));
 
-        if (res.ok) {
-          addMessage(data.risposta, "bot");
-          if (data.ticket_creato) {
-            pendingTicketId = data.ticket_id;
-            setTimeout(function() {
-              document.getElementById("email-modal").style.display = "flex";
-            }, 800);
+        var res = await fetch("/api/ask/" + currentRaceId, { method: "POST", body: formData });
+        if (!res.ok) { typing.remove(); addMessage("Errore del server. Riprova.", "bot"); return; }
+
+        typing.remove();
+        var botMsg = addMessage("", "bot");
+        var fullText = "";
+
+        var reader = res.body.getReader();
+        var decoder = new TextDecoder();
+        var buffer = "";
+
+        while (true) {
+          var _ref = await reader.read();
+          var done = _ref.done, value = _ref.value;
+          if (done) break;
+          buffer += decoder.decode(value, { stream: true });
+          var lines = buffer.split("\n");
+          buffer = lines.pop();
+          for (var line of lines) {
+            if (line.startsWith("data: ")) {
+              var payload = line.slice(6);
+              if (payload === "[DONE]") {
+                // controlla ticket nel testo finale non serve — arriva via SSE extra
+              } else if (payload.startsWith("{")) {
+                try {
+                  var json = JSON.parse(payload);
+                  if (json.ticket_creato && json.ticket_id) {
+                    pendingTicketId = json.ticket_id;
+                    setTimeout(function() {
+                      document.getElementById("email-modal").style.display = "flex";
+                    }, 800);
+                  }
+                } catch(e) {}
+              } else {
+                fullText += payload.replace(/\\n/g, "\n");
+                botMsg.innerHTML = fullText.replace(/\n/g, "<br>");
+                var messages = document.getElementById("messages");
+                messages.scrollTop = messages.scrollHeight;
+              }
+            }
           }
-        } else {
-          addMessage("Mi dispiace, non ho trovato informazioni. Contatta la segreteria.", "bot");
         }
+
+        if (!fullText) addMessage("Mi dispiace, non ho trovato informazioni. Contatta la segreteria.", "bot");
+
       } catch(e) {
         typing.remove();
         addMessage("Errore di connessione. Riprova.", "bot");
+        console.error(e);
       }
     }
 
