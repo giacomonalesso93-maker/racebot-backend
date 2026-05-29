@@ -477,6 +477,10 @@
               <input type="email" name="secretary_email" placeholder="segreteria@gara.it">
             </div>
           </div>
+          <div>
+            <label>Note aggiuntive</label>
+            <textarea name="notes" placeholder="Informazioni extra per il chatbot (materiale obbligatorio, regole speciali, contatti...)" style="width:100%;padding:8px 12px;border:1px solid #e5e7eb;border-radius:8px;font-size:14px;resize:vertical;min-height:70px;font-family:inherit;"></textarea>
+          </div>
           <label>Sport</label>
           <input type="hidden" name="sport_type" id="sport-type-val" value="running">
           <div class="sport-picker" id="sport-picker">
@@ -639,7 +643,7 @@
             </form>
             <button type="button" class="btn btn-gray" onclick="openTextReg('{{ race.id }}', '')">📝 Inserisci testo</button>
           {% endif %}
-          <button class="btn btn-gray" onclick="openEditRace('{{ race.id }}', '{{ race.name|replace("'", "\\'") }}', '{{ race.date or "" }}', '{{ race.location or "" }}', '{{ race.elevation_gain or "" }}', '{{ race.secretary_email or "" }}', '{{ race.length_km or "" }}', '{{ race.start_time or "" }}')">✏️</button>
+          <button class="btn btn-gray" onclick="openEditRace('{{ race.id }}', '{{ race.name|replace("'", "\\'") }}', '{{ race.date or "" }}', '{{ race.location or "" }}', '{{ race.elevation_gain or "" }}', '{{ race.secretary_email or "" }}', '{{ race.length_km or "" }}', '{{ race.start_time or "" }}', '{{ race.sport_type or "running" }}', '{{ race.notes|replace("'", "\\'") if race.notes else "" }}')">✏️</button>
           <form method="POST" action="/api/races/{{ race.id }}/delete" class="inline">
             <button type="button" class="btn btn-red" onclick="confirmDelete('Elimina gara', 'Vuoi eliminare <strong>{{ race.name }}</strong>?', this.form)">🗑️</button>
           </form>
@@ -783,7 +787,7 @@
       document.getElementById(hiddenId).value = el.dataset.val;
     }
 
-    function openEditRace(id, name, date, location, elevation, email, lengthKm, startTime, sportType) {
+    function openEditRace(id, name, date, location, elevation, email, lengthKm, startTime, sportType, notes) {
       document.getElementById("edit-title").textContent = "✏️ Modifica gara";
       document.getElementById("edit-form").action = `/api/races/${id}/edit`;
       const sportPicker = SPORTS.map(s =>
@@ -804,6 +808,8 @@
           <div><label>Dislivello +</label><input type="text" name="elevation_gain" value="${elevation}" placeholder="es. 1.200 m"></div>
           <div><label>Email segreteria</label><input type="email" name="secretary_email" value="${email}"></div>
         </div>
+        <label>Note aggiuntive</label>
+        <textarea name="notes" placeholder="Informazioni extra per il chatbot..." style="width:100%;padding:8px 12px;border:1px solid #e5e7eb;border-radius:8px;font-size:14px;resize:vertical;min-height:70px;font-family:inherit;">${notes||''}</textarea>
         <label>Sport</label>
         <input type="hidden" name="sport_type" id="edit-sport-val" value="${sportType||'running'}">
         <div class="sport-picker">${sportPicker}</div>
