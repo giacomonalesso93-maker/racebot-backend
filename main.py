@@ -490,12 +490,16 @@ async def ask_question(
     ]
 
     # Prepara dizionario posizioni con link per iniezione automatica
+    # Usa google_maps_url se disponibile, altrimenti genera da coordinate
     locs_with_links = {}
     for loc in locs:
-        if loc.get("google_maps_url"):
+        url = loc.get("google_maps_url")
+        if not url and loc.get("lat") and loc.get("lng"):
+            url = f"https://www.google.com/maps?q={loc['lat']},{loc['lng']}"
+        if url:
             locs_with_links[loc["name"].lower()] = {
                 "name": loc["name"],
-                "url": loc["google_maps_url"],
+                "url": url,
                 "type": loc.get("type", "")
             }
 
