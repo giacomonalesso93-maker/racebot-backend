@@ -277,8 +277,10 @@
     }
     .plan-badge-header {
       display: inline-flex; align-items: center; gap: 5px;
-      font-size: 11px; font-weight: 700; padding: 3px 10px; border-radius: 20px;
-      margin-right: 10px; letter-spacing: 0.3px;
+      font-size: 12px; font-weight: 800; padding: 5px 14px; border-radius: 20px;
+      margin-right: 10px; letter-spacing: 0.5px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+      text-transform: uppercase;
     }
     .upgrade-tooltip {
       display: none; position: absolute; bottom: calc(100% + 6px); left: 50%;
@@ -391,7 +393,7 @@
     </div>
     <div style="display:flex; align-items:center;">
       <span class="header-user">Ciao, {{ organizer.name }}</span>
-      <span class="plan-badge-header" style="background:{{ plan_color }}22; color:{{ plan_color }}; border:1px solid {{ plan_color }}44;">{{ plan_label }}</span>
+      <span class="plan-badge-header" style="background:{{ plan_color }}; color:white; border:1px solid {{ plan_color }};">{{ plan_label }}</span>
       <nav class="header-nav">
         {% if features.ticketing %}
           <a href="/dashboard/tickets">🎟️ Ticket</a>
