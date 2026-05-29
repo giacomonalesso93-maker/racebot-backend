@@ -221,6 +221,7 @@ def edit_race(
     start_time: str = Form(""),
     secretary_email: str = Form(""),
     sport_type: str = Form(""),
+    notes: str = Form(""),
     session: str = Cookie(default=None)
 ):
     organizer = get_current_organizer(session) if session else None
@@ -235,6 +236,7 @@ def edit_race(
         "start_time": start_time or None,
         "secretary_email": secretary_email or None,
         "sport_type": sport_type or None,
+        "notes": notes or None,
     }).eq("id", race_id).execute()
     race_data = supabase.table("races").select("event_id").eq("id", race_id).execute().data
     event_id = race_data[0].get("event_id") if race_data else None
@@ -296,6 +298,7 @@ def create_race(
     elevation_gain: str = Form(""),
     length_km: str = Form(""),
     start_time: str = Form(""),
+    notes: str = Form(""),
     event_id: str = Form(""),
     session: str = Cookie(default=None)
 ):
@@ -313,6 +316,7 @@ def create_race(
         "elevation_gain": elevation_gain or None,
         "length_km": length_km or None,
         "start_time": start_time or None,
+        "notes": notes or None,
         "pdf_uploaded": False,
         "event_id": event_id if event_id else None
     }).execute()
@@ -467,6 +471,7 @@ async def ask_question(
         "length_km": race.get("length_km"),
         "start_time": race.get("start_time"),
         "secretary_email": race.get("secretary_email"),
+        "notes": race.get("notes"),
     }
 
     # Parsing storico conversazione
@@ -736,6 +741,14 @@ def page_qa(request: Request, race_id: str, session: str = Cookie(default=None))
         "race": race,
         "items": items
     })
+
+
+@app.get("/api/races/{race_id}/info")
+def api_race_info(race_id: str):
+    result = supabase.table("races").select("name,date,start_time,location,length_km,elevation_gain,notes").eq("id", race_id).execute()
+    if not result.data:
+        return {}
+    return result.data[0]
 
 
 @app.get("/api/races/{race_id}/locations")

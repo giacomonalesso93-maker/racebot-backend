@@ -116,10 +116,18 @@
 
     input.addEventListener("keydown", function(e) { if (e.key === "Enter") sendMessage(); });
 
+    function formatText(text) {
+      return text
+        .replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>")
+        .replace(/\*(.*?)\*/g, "<em>$1</em>")
+        .replace(/(https?:\/\/[^\s<]+)/g, '<a href="$1" target="_blank" style="color:#2563eb;text-decoration:underline;">🗺️ Apri mappa</a>')
+        .replace(/\n/g, "<br>");
+    }
+
     function addMessage(text, type) {
       var div = document.createElement("div");
       div.className = "msg " + type;
-      div.innerHTML = text.replace(/\n/g, "<br>").replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>");
+      div.innerHTML = formatText(text);
       messages.appendChild(div);
       messages.scrollTop = messages.scrollHeight;
       return div;
@@ -132,15 +140,59 @@
       document.getElementById("race-selector").remove();
       addMessage("Sono iscritto alla <strong>" + raceName + "</strong>", "user");
 
-      setTimeout(function() {
-        addMessage("Perfetto! 🎽 Rispondo come assistente della <strong>" + raceName + "</strong>.<br>Come posso aiutarti?", "bot");
-        input.disabled = false;
-        input.placeholder = "Scrivi una domanda...";
-        sendBtn.disabled = false;
-        input.focus();
-        document.getElementById("map-btn").style.display = "block";
-        document.getElementById("header-sub").textContent = raceName;
-      }, 400);
+      // Carica info gara per il messaggio di benvenuto
+      fetch("/api/races/" + raceId + "/info")
+        .then(function(r) { return r.json(); })
+        .then(function(info) {
+          var welcome = "Ciao! 👋 Sono l'assistente virtuale della <strong>" + raceName + "</strong>.";
+          if (info.date || info.start_time || info.location || info.length_km) {
+            welcome += "<br><br>📋 <strong>Info gara:</strong>";
+            if (info.date) welcome += "<br>📅 Data: " + info.date;
+            if (info.start_time) welcome += "<br>⏰ Partenza: " + info.start_time;
+            if (info.location) welcome += "<br>📍 Luogo: " + info.location;
+            if (info.length_km) welcome += "<br>📏 Distanza: " + info.length_km + " km";
+            if (info.elevation_gain) welcome += "<br>⛰️ Dislivello: " + info.elevation_gain;
+          }
+          welcome += "<br><br>Posso aiutarti con: regolamento, logistica, parcheggi, ristori, materiale obbligatorio e molto altro.";
+          addMessage(welcome, "bot");
+          showQuickReplies();
+        })
+        .catch(function() {
+          addMessage("Ciao! 👋 Sono l'assistente della <strong>" + raceName + "</strong>. Come posso aiutarti?", "bot");
+          showQuickReplies();
+        });
+
+      input.disabled = false;
+      input.placeholder = "Scrivi una domanda...";
+      sendBtn.disabled = false;
+      input.focus();
+      document.getElementById("map-btn").style.display = "block";
+      document.getElementById("header-sub").textContent = raceName;
+    }
+
+    function showQuickReplies() {
+      var container = document.createElement("div");
+      container.id = "quick-replies";
+      container.style.cssText = "display:flex;flex-wrap:wrap;gap:8px;padding:8px 12px;";
+      var questions = [
+        "🅿️ Dove sono i parcheggi?",
+        "⏰ A che ora parte la gara?",
+        "🎒 Materiale obbligatorio?",
+        "🥤 Dove sono i ristori?"
+      ];
+      questions.forEach(function(q) {
+        var btn = document.createElement("button");
+        btn.textContent = q;
+        btn.style.cssText = "background:#eff6ff;border:1px solid #bfdbfe;color:#1d4ed8;padding:6px 12px;border-radius:20px;font-size:13px;cursor:pointer;white-space:nowrap;";
+        btn.onclick = function() {
+          container.remove();
+          input.value = q.replace(/^[^\s]+\s/, "");
+          sendMessage();
+        };
+        container.appendChild(btn);
+      });
+      messages.appendChild(container);
+      messages.scrollTop = messages.scrollHeight;
     }
 
     function toggleMap() {
@@ -248,7 +300,7 @@
                 } catch(e) {}
               } else {
                 fullText += payload.replace(/\\n/g, "\n");
-                botMsg.innerHTML = fullText.replace(/\n/g, "<br>").replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>");
+                botMsg.innerHTML = formatText(fullText);
                 var messages = document.getElementById("messages");
                 messages.scrollTop = messages.scrollHeight;
               }

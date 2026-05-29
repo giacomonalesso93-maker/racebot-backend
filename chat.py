@@ -30,6 +30,8 @@ def build_system_and_sections(context_chunks: list[str], race_name: str,
             race_info_lines.append(f"- Dislivello positivo: {race_info['elevation_gain']}")
         if race_info.get("secretary_email"):
             race_info_lines.append(f"- Email segreteria: {race_info['secretary_email']}")
+        if race_info.get("notes"):
+            race_info_lines.append(f"- Note aggiuntive: {race_info['notes']}")
 
     # Fetch meteo se disponibili data e location
     weather_context = ""
