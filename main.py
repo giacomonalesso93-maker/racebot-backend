@@ -1258,6 +1258,79 @@ def page_widget_preview(request: Request, race_id: str):
     return HTMLResponse(content=html)
 
 
+@app.get("/widget-preview/event/{event_id}", response_class=HTMLResponse)
+def page_widget_preview_event(request: Request, event_id: str):
+    result = supabase.table("events").select("*").eq("id", event_id).execute()
+    if not result.data:
+        raise HTTPException(status_code=404, detail="Evento non trovato")
+    event = result.data[0]
+    chat_url = str(request.base_url) + f"chat/event/{event_id}"
+    html = f"""<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Anteprima Widget — {event['name']}</title>
+  <style>
+    * {{ box-sizing: border-box; margin: 0; padding: 0; }}
+    body {{ font-family: system-ui, sans-serif; background: #f1f5f9; }}
+    .preview-bar {{ background: #0f172a; color: white; padding: 12px 24px; display: flex; align-items: center; justify-content: space-between; position: sticky; top: 0; z-index: 100; }}
+    .preview-label {{ font-size: 12px; font-weight: 700; color: #4ade80; letter-spacing: 0.5px; text-transform: uppercase; }}
+    .preview-name {{ font-size: 14px; color: rgba(255,255,255,0.7); margin-left: 12px; }}
+    .preview-hint {{ font-size: 12px; color: rgba(255,255,255,0.5); }}
+    .fake-site {{ max-width: 900px; margin: 40px auto; padding: 0 24px; }}
+    .fake-header {{ background: white; border-radius: 12px; padding: 20px 28px; margin-bottom: 24px; display: flex; align-items: center; justify-content: space-between; box-shadow: 0 1px 4px rgba(0,0,0,0.06); }}
+    .fake-logo {{ font-size: 18px; font-weight: 800; color: #0f172a; }}
+    .fake-nav {{ display: flex; gap: 20px; }}
+    .fake-nav span {{ font-size: 13px; color: #94a3b8; }}
+    .fake-hero {{ background: linear-gradient(135deg, #1e3a8a, #2563eb); border-radius: 12px; padding: 48px 32px; text-align: center; margin-bottom: 24px; }}
+    .fake-hero h1 {{ font-size: 28px; font-weight: 800; color: white; margin-bottom: 8px; }}
+    .fake-hero p {{ color: rgba(255,255,255,0.75); font-size: 14px; }}
+    .fake-content {{ display: grid; grid-template-columns: 2fr 1fr; gap: 20px; }}
+    .fake-card {{ background: white; border-radius: 12px; padding: 24px; box-shadow: 0 1px 4px rgba(0,0,0,0.06); }}
+    .fake-card h3 {{ font-size: 14px; font-weight: 700; color: #0f172a; margin-bottom: 12px; }}
+    .fake-line {{ height: 10px; background: #f1f5f9; border-radius: 4px; margin-bottom: 8px; }}
+    .widget-iframe {{ position: fixed; bottom: 0; right: 0; width: 420px; height: 620px; border: none; z-index: 9999; border-radius: 20px 0 0 0; }}
+    @media(max-width:600px) {{ .fake-content {{ grid-template-columns: 1fr; }} .widget-iframe {{ width: 100%; border-radius: 0; }} }}
+  </style>
+</head>
+<body>
+  <div class="preview-bar">
+    <div style="display:flex;align-items:center;">
+      <div class="preview-label">👁️ Anteprima widget</div>
+      <div class="preview-name">{event['name']}</div>
+    </div>
+    <div class="preview-hint">La bolla blu in basso a destra è il tuo chatbot</div>
+  </div>
+  <div class="fake-site">
+    <div class="fake-header">
+      <div class="fake-logo">🏔️ ASD Trail Running</div>
+      <div class="fake-nav"><span>Home</span><span>Gare</span><span>Info</span><span>Contatti</span></div>
+    </div>
+    <div class="fake-hero">
+      <h1>{event['name']}</h1>
+      <p>Benvenuto sulla pagina ufficiale dell'evento — il chatbot risponde a tutte le tue domande</p>
+    </div>
+    <div class="fake-content">
+      <div class="fake-card">
+        <h3>Informazioni evento</h3>
+        <div class="fake-line" style="width:80%"></div>
+        <div class="fake-line" style="width:60%"></div>
+        <div class="fake-line" style="width:70%"></div>
+      </div>
+      <div class="fake-card">
+        <h3>Come arrivare</h3>
+        <div class="fake-line"></div>
+        <div class="fake-line" style="width:75%"></div>
+      </div>
+    </div>
+  </div>
+  <iframe src="{chat_url}" class="widget-iframe" title="Repliq Widget"></iframe>
+</body>
+</html>"""
+    return HTMLResponse(content=html)
+
+
 @app.get("/chat/{race_id}", response_class=HTMLResponse)
 def page_chat(request: Request, race_id: str, session: str = Cookie(default=None)):
     result = supabase.table("races").select("*").eq("id", race_id).execute()
