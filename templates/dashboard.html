@@ -4,6 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Repliq — Dashboard</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/tabler-icons.min.css">
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -419,31 +420,119 @@
     }
     .plan-info-box h4 { font-size: 13px; font-weight: 700; color: #1e40af; margin-bottom: 4px; }
     .plan-info-box p { font-size: 13px; color: #4338ca; }
+
+    /* ── SIDEBAR LAYOUT ── */
+    body { overflow: hidden; }
+    .app-layout { display: flex; height: 100vh; }
+    .sidebar {
+      width: 220px; background: #0f172a; display: flex; flex-direction: column;
+      flex-shrink: 0; height: 100vh; overflow: hidden; z-index: 100;
+      transition: transform 0.25s;
+    }
+    .sidebar-logo { padding: 20px 20px 16px; border-bottom: 1px solid rgba(255,255,255,0.08); flex-shrink: 0; }
+    .logo-name { font-size: 20px; font-weight: 900; color: white; letter-spacing: -0.5px; }
+    .logo-tagline { font-size: 10px; color: rgba(255,255,255,0.3); letter-spacing: 1px; text-transform: uppercase; margin-top: 2px; }
+    .sidebar-nav { flex: 1; padding: 12px; overflow-y: auto; }
+    .nav-section { margin-bottom: 20px; }
+    .nav-section-label { font-size: 10px; color: rgba(255,255,255,0.3); text-transform: uppercase; letter-spacing: 1px; padding: 0 8px; margin-bottom: 4px; }
+    .nav-item { display: flex; align-items: center; gap: 10px; padding: 8px 10px; border-radius: 8px; color: rgba(255,255,255,0.55); font-size: 13px; text-decoration: none; cursor: pointer; border: none; background: none; width: 100%; text-align: left; transition: all 0.15s; margin-bottom: 1px; }
+    .nav-item:hover { background: rgba(255,255,255,0.07); color: rgba(255,255,255,0.85); }
+    .nav-item.active { background: rgba(99,102,241,0.2); color: #a5b4fc; }
+    .nav-item i { font-size: 16px; flex-shrink: 0; }
+    .nav-badge { margin-left: auto; background: #ef4444; color: white; font-size: 10px; padding: 1px 6px; border-radius: 20px; font-weight: 700; }
+    .nav-lock { margin-left: auto; font-size: 11px; color: rgba(255,255,255,0.25); }
+    .sidebar-user { padding: 14px; border-top: 1px solid rgba(255,255,255,0.08); flex-shrink: 0; }
+    .user-card-sb { display: flex; align-items: center; gap: 10px; padding: 8px 10px; border-radius: 8px; background: rgba(255,255,255,0.05); }
+    .user-avatar-sb { width: 32px; height: 32px; border-radius: 8px; background: linear-gradient(135deg,#6366f1,#8b5cf6); display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 700; color: white; flex-shrink: 0; }
+    .user-name-sb { font-size: 12px; color: rgba(255,255,255,0.75); font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .user-plan-sb { font-size: 10px; color: rgba(255,255,255,0.35); margin-top: 1px; display: flex; align-items: center; gap: 4px; }
+    .plan-dot-sb { width: 5px; height: 5px; border-radius: 50%; background: #4ade80; flex-shrink: 0; }
+
+    .main-area { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+    .topbar-new { height: 60px; background: white; border-bottom: 1px solid #f1f5f9; display: flex; align-items: center; justify-content: space-between; padding: 0 28px; flex-shrink: 0; box-shadow: 0 1px 4px rgba(0,0,0,0.04); }
+    .topbar-title-new { font-size: 16px; font-weight: 700; color: #0f172a; }
+    .topbar-right { display: flex; align-items: center; gap: 10px; }
+    .plan-badge-top { font-size: 11px; font-weight: 700; padding: 4px 10px; border-radius: 20px; }
+    .content-area { flex: 1; overflow-y: auto; padding: 24px 28px 60px; background: #f8fafc; }
+
+    .sidebar-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 99; }
+    .hamburger { display: none; background: none; border: none; cursor: pointer; padding: 6px; color: #374151; font-size: 22px; margin-right: 8px; }
+
+    @media (max-width: 768px) {
+      body { overflow: auto; }
+      .app-layout { flex-direction: column; height: auto; }
+      .sidebar { position: fixed; top: 0; left: 0; height: 100vh; transform: translateX(-100%); }
+      .sidebar.open { transform: translateX(0); }
+      .sidebar-overlay.open { display: block; }
+      .main-area { margin-left: 0; height: 100vh; }
+      .hamburger { display: flex; align-items: center; }
+      .topbar-new { padding: 0 14px; }
+      .content-area { padding: 14px 12px 60px; }
+    }
   </style>
 </head>
 <body>
-  <header>
-    <div class="header-logo">
-      Repliq
+<div class="app-layout">
+
+  <!-- Sidebar overlay mobile -->
+  <div class="sidebar-overlay" id="sidebar-overlay" onclick="closeSidebar()"></div>
+
+  <!-- SIDEBAR -->
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-logo">
+      <div class="logo-name">Repliq</div>
+      <div class="logo-tagline">AI for sport events</div>
     </div>
-    <div style="display:flex; align-items:center;">
-      <span class="header-user">Ciao, {{ organizer.name }}</span>
-      <span class="plan-badge-header" style="background:{{ plan_color }}; color:white; border:1px solid {{ plan_color }};">{{ plan_label }}</span>
-      <nav class="header-nav">
+
+    <nav class="sidebar-nav">
+      <div class="nav-section">
+        <div class="nav-section-label">Principale</div>
+        <a href="/dashboard" class="nav-item active"><i class="ti ti-layout-dashboard"></i> Dashboard</a>
+      </div>
+      <div class="nav-section">
+        <div class="nav-section-label">Gestione</div>
         {% if features.ticketing %}
-          <a href="/dashboard/tickets">🎟️ Ticket</a>
+        <a href="/dashboard/tickets" class="nav-item">
+          <i class="ti ti-ticket"></i> Ticket
+          {% if stats.open_tickets > 0 %}<span class="nav-badge">{{ stats.open_tickets }}</span>{% endif %}
+        </a>
         {% else %}
-          <span class="lock-wrap" title="Disponibile dal piano Stagione Pro">
-            <a href="#" onclick="return false;" style="opacity:0.5;cursor:not-allowed;">🔒 Ticket</a>
-          </span>
+        <span class="nav-item" style="opacity:0.4;cursor:not-allowed;"><i class="ti ti-ticket"></i> Ticket <span class="nav-lock">🔒</span></span>
         {% endif %}
-        <a href="/dashboard/stats">📊 Statistiche</a>
-        <a href="#" onclick="openGuide();return false;">❓ Guida</a>
-        <a href="#" onclick="openSettings();return false;">⚙️ Impostazioni</a>
-        <a href="/api/logout" class="logout">Esci</a>
-      </nav>
+        <a href="/dashboard/stats" class="nav-item"><i class="ti ti-chart-bar"></i> Statistiche</a>
+      </div>
+      <div class="nav-section">
+        <div class="nav-section-label">Account</div>
+        <button class="nav-item" onclick="openGuide()"><i class="ti ti-help"></i> Guida</button>
+        <button class="nav-item" onclick="openSettings()"><i class="ti ti-settings"></i> Impostazioni</button>
+        <a href="/api/logout" class="nav-item" style="color:rgba(255,130,130,0.7);"><i class="ti ti-logout"></i> Esci</a>
+      </div>
+    </nav>
+
+    <div class="sidebar-user">
+      <div class="user-card-sb">
+        <div class="user-avatar-sb">{{ organizer.name[:2].upper() if organizer.name|length >= 2 else organizer.name[0].upper() }}</div>
+        <div style="min-width:0;">
+          <div class="user-name-sb">{{ organizer.name }}</div>
+          <div class="user-plan-sb"><span class="plan-dot-sb"></span>{{ plan_label }}</div>
+        </div>
+      </div>
     </div>
-  </header>
+  </aside>
+
+  <!-- MAIN AREA -->
+  <div class="main-area">
+    <!-- TOPBAR -->
+    <div class="topbar-new">
+      <div style="display:flex;align-items:center;">
+        <button class="hamburger" onclick="openSidebar()"><i class="ti ti-menu-2"></i></button>
+        <span class="topbar-title-new">Dashboard</span>
+      </div>
+      <div class="topbar-right">
+        <span style="font-size:12px;color:#94a3b8;display:none;" class="d-desktop">Ciao, {{ organizer.name }}</span>
+        <span class="plan-badge-top" style="background:{{ plan_color }};color:white;">{{ plan_label }}</span>
+      </div>
+    </div>
 
   <!-- MODAL GUIDA -->
   <div class="overlay" id="guide-overlay" onclick="if(event.target===this)closeGuide()">
@@ -651,7 +740,7 @@
     </div>
   </div>
 
-  <div class="container">
+    <div class="content-area">
 
     {% if flash_ok %}
     <div class="flash-ok">✅ {{ flash_ok }}</div>
@@ -661,28 +750,28 @@
     {% if stats.total_races > 0 or stats.total_events > 0 %}
     <div class="stats-bar">
       <div class="stat-card">
-        <div class="stat-icon blue">🏃</div>
+        <div class="stat-icon blue"><i class="ti ti-run" style="font-size:20px;"></i></div>
         <div>
           <div class="stat-value">{{ stats.total_races }}</div>
           <div class="stat-label">Gare attive</div>
         </div>
       </div>
       <div class="stat-card">
-        <div class="stat-icon green">🏆</div>
+        <div class="stat-icon green"><i class="ti ti-trophy" style="font-size:20px;"></i></div>
         <div>
           <div class="stat-value">{{ stats.total_events }}</div>
           <div class="stat-label">Eventi</div>
         </div>
       </div>
       <div class="stat-card">
-        <div class="stat-icon orange">💬</div>
+        <div class="stat-icon orange"><i class="ti ti-message-chatbot" style="font-size:20px;"></i></div>
         <div>
           <div class="stat-value">{{ stats.total_questions }}</div>
           <div class="stat-label">Domande ricevute</div>
         </div>
       </div>
       <div class="stat-card">
-        <div class="stat-icon {% if stats.open_tickets > 0 %}red{% else %}green{% endif %}">🎟️</div>
+        <div class="stat-icon {% if stats.open_tickets > 0 %}red{% else %}green{% endif %}"><i class="ti ti-ticket" style="font-size:20px;"></i></div>
         <div>
           <div class="stat-value">{{ stats.open_tickets }}</div>
           <div class="stat-label">Ticket aperti</div>
@@ -989,7 +1078,9 @@
       {% endif %}
     {% endif %}
 
-  </div>
+    </div><!-- end content-area -->
+  </div><!-- end main-area -->
+</div><!-- end app-layout -->
 
   <!-- Modal embed -->
   <div id="embed-modal">
@@ -1254,9 +1345,19 @@
     function openSettings() { document.getElementById("settings-overlay").classList.add("open"); }
     function closeSettings() { document.getElementById("settings-overlay").classList.remove("open"); }
 
+    // Sidebar mobile
+    function openSidebar() {
+      document.getElementById("sidebar").classList.add("open");
+      document.getElementById("sidebar-overlay").classList.add("open");
+    }
+    function closeSidebar() {
+      document.getElementById("sidebar").classList.remove("open");
+      document.getElementById("sidebar-overlay").classList.remove("open");
+    }
+
     // Close modals with Escape
     document.addEventListener("keydown", e => {
-      if (e.key === "Escape") { closeGuide(); closeSettings(); }
+      if (e.key === "Escape") { closeGuide(); closeSettings(); closeSidebar(); }
     });
   </script>
 </body>
