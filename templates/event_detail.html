@@ -150,6 +150,73 @@
       <button class="copy-btn" onclick="copyLink()">Copia link chatbot</button>
     </div>
 
+    <!-- INFO GENERALI EVENTO -->
+    <div class="card">
+      <h2>📋 Info generali evento <span style="font-size:12px;font-weight:400;color:#94a3b8;margin-left:8px;">Visibili nel chatbot per tutte le gare</span></h2>
+      <form method="POST" action="/api/events/{{ event.id }}/general-info">
+        <div style="margin-bottom:12px;">
+          <label style="display:block;font-size:12px;font-weight:600;color:#6b7280;text-transform:uppercase;letter-spacing:0.4px;margin-bottom:4px;">Segreteria / Ritiro pettorali</label>
+          <input type="text" name="secretary_location" value="{{ event.secretary_location or '' }}" placeholder="es. Palazzetto dello Sport, Via Roma 1, Arco" style="width:100%;padding:9px 12px;border:1.5px solid #e5e7eb;border-radius:8px;font-size:14px;outline:none;background:#fafafa;">
+        </div>
+        <div style="margin-bottom:12px;">
+          <label style="display:block;font-size:12px;font-weight:600;color:#6b7280;text-transform:uppercase;letter-spacing:0.4px;margin-bottom:4px;">Email organizzazione</label>
+          <input type="email" name="secretary_email" value="{{ event.secretary_email or '' }}" placeholder="info@gara.it" style="width:100%;padding:9px 12px;border:1.5px solid #e5e7eb;border-radius:8px;font-size:14px;outline:none;background:#fafafa;">
+        </div>
+        <div style="margin-bottom:14px;">
+          <label style="display:block;font-size:12px;font-weight:600;color:#6b7280;text-transform:uppercase;letter-spacing:0.4px;margin-bottom:4px;">Info generali <span style="text-transform:none;font-weight:400;">(come arrivare, hotel, info area)</span></label>
+          <textarea name="general_info" placeholder="es. L'evento si svolge ad Arco (TN). Per arrivare in auto: A22 uscita Rovereto Sud, poi SS240 verso Arco. Hotel convenzionati: Hotel Lido (10% sconto con codice TENNOTRAIL)..." style="width:100%;padding:9px 12px;border:1.5px solid #e5e7eb;border-radius:8px;font-size:14px;outline:none;background:#fafafa;resize:vertical;min-height:100px;font-family:inherit;">{{ event.general_info or '' }}</textarea>
+        </div>
+        <button type="submit" style="padding:9px 20px;background:#2563eb;color:white;border:none;border-radius:8px;font-size:14px;font-weight:600;cursor:pointer;">Salva info generali</button>
+      </form>
+
+      {% if event_locations %}
+      <div style="margin-top:20px;padding-top:16px;border-top:1px solid #f1f5f9;">
+        <p style="font-size:13px;font-weight:600;color:#374151;margin-bottom:10px;">📍 Posizioni generali evento ({{ event_locations|length }})</p>
+        <div style="display:flex;flex-direction:column;gap:6px;">
+          {% for loc in event_locations %}
+          <div style="background:#f8fafc;border-radius:8px;padding:8px 12px;border:1px solid #f1f5f9;display:flex;align-items:center;justify-content:space-between;gap:8px;">
+            <span style="font-size:13px;color:#374151;">{{ loc.name }} <span style="color:#94a3b8;">({{ loc.type }})</span>{% if loc.notes %} — {{ loc.notes }}{% endif %}</span>
+          </div>
+          {% endfor %}
+        </div>
+      </div>
+      {% endif %}
+
+      <details style="margin-top:16px;">
+        <summary style="font-size:13px;font-weight:600;color:#2563eb;cursor:pointer;padding:6px 0;">+ Aggiungi posizione generale (segreteria, hotel, parcheggio comune)</summary>
+        <form method="POST" action="/api/events/{{ event.id }}/locations" style="margin-top:12px;">
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px;">
+            <div>
+              <label style="display:block;font-size:12px;font-weight:600;color:#6b7280;margin-bottom:3px;">Nome *</label>
+              <input type="text" name="name" placeholder="es. Segreteria gara" required style="width:100%;padding:8px 10px;border:1.5px solid #e5e7eb;border-radius:7px;font-size:13px;outline:none;">
+            </div>
+            <div>
+              <label style="display:block;font-size:12px;font-weight:600;color:#6b7280;margin-bottom:3px;">Tipo</label>
+              <select name="type" style="width:100%;padding:8px 10px;border:1.5px solid #e5e7eb;border-radius:7px;font-size:13px;outline:none;background:white;">
+                <option value="altro">Altro</option>
+                <option value="parcheggio">Parcheggio</option>
+                <option value="partenza">Partenza</option>
+                <option value="arrivo">Arrivo</option>
+                <option value="ristoro">Ristoro</option>
+                <option value="punto_medico">Punto medico</option>
+              </select>
+            </div>
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px;">
+            <div>
+              <label style="display:block;font-size:12px;font-weight:600;color:#6b7280;margin-bottom:3px;">Note</label>
+              <input type="text" name="notes" placeholder="es. Aperto dalle 7:00" style="width:100%;padding:8px 10px;border:1.5px solid #e5e7eb;border-radius:7px;font-size:13px;outline:none;">
+            </div>
+            <div>
+              <label style="display:block;font-size:12px;font-weight:600;color:#6b7280;margin-bottom:3px;">Link Google Maps</label>
+              <input type="url" name="google_maps_url" placeholder="https://maps.google.com/..." style="width:100%;padding:8px 10px;border:1.5px solid #e5e7eb;border-radius:7px;font-size:13px;outline:none;">
+            </div>
+          </div>
+          <button type="submit" style="padding:7px 16px;background:#f1f5f9;color:#475569;border:1px solid #e2e8f0;border-radius:7px;font-size:13px;font-weight:600;cursor:pointer;">+ Aggiungi posizione</button>
+        </form>
+      </details>
+    </div>
+
     <div class="card">
       <h2>Aggiungi gara a questo evento</h2>
       <form method="POST" action="/api/races">

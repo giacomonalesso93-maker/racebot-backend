@@ -265,7 +265,54 @@ def edit_event(
         "location": location or None,
         "sport_type": sport_type or None,
     }).eq("id", event_id).execute()
-    return RedirectResponse(url="/dashboard?ok=Evento+aggiornato", status_code=303)
+    return RedirectResponse(url=f"/dashboard/events/{event_id}?ok=Evento+aggiornato", status_code=303)
+
+
+@app.post("/api/events/{event_id}/general-info")
+async def save_event_general_info(
+    event_id: str,
+    general_info: str = Form(""),
+    secretary_location: str = Form(""),
+    secretary_email: str = Form(""),
+    session: str = Cookie(default=None)
+):
+    organizer = get_current_organizer(session) if session else None
+    if not organizer:
+        raise HTTPException(status_code=401, detail="Non autenticato")
+    supabase.table("events").update({
+        "general_info": general_info or None,
+        "secretary_location": secretary_location or None,
+        "secretary_email": secretary_email or None,
+    }).eq("id", event_id).execute()
+    return RedirectResponse(url=f"/dashboard/events/{event_id}?ok=Info+generali+salvate", status_code=303)
+
+
+@app.post("/api/events/{event_id}/locations")
+async def add_event_location(
+    event_id: str,
+    name: str = Form(...),
+    type: str = Form("altro"),
+    notes: str = Form(""),
+    google_maps_url: str = Form(""),
+    lat: str = Form(""),
+    lng: str = Form(""),
+    session: str = Cookie(default=None)
+):
+    organizer = get_current_organizer(session) if session else None
+    if not organizer:
+        raise HTTPException(status_code=401, detail="Non autenticato")
+    supabase.table("locations").insert({
+        "id": str(uuid.uuid4()),
+        "event_id": event_id,
+        "race_id": None,
+        "name": name,
+        "type": type,
+        "notes": notes or None,
+        "google_maps_url": google_maps_url or None,
+        "lat": float(lat) if lat else None,
+        "lng": float(lng) if lng else None,
+    }).execute()
+    return RedirectResponse(url=f"/dashboard/events/{event_id}?ok=Posizione+aggiunta", status_code=303)
 
 
 @app.post("/api/races/{race_id}/delete")
@@ -452,19 +499,48 @@ async def ask_question(
         chunks = []
 
     locs = get_locations(race_id)
-    location_context = ""
-    if locs:
-        lines = ["Posizioni e punti logistici della gara (IMPORTANTE: quando menzioni una posizione che ha un link mappa, includi SEMPRE il link esatto nella risposta):"]
-        for loc in locs:
+
+    # Recupera anche posizioni a livello evento (segreteria, hotel, info generali)
+    event_id = race.get("event_id")
+    event_locs = []
+    event_general_info = ""
+    if event_id:
+        event_data = supabase.table("events").select("general_info,secretary_location,secretary_email,name").eq("id", event_id).execute().data
+        if event_data:
+            ev = event_data[0]
+            if ev.get("general_info"):
+                event_general_info = f"Informazioni generali dell'evento {ev['name']}:\n{ev['general_info']}"
+            if ev.get("secretary_location"):
+                event_general_info += f"\nSegreteria/Ritiro pettorali: {ev['secretary_location']}"
+            if ev.get("secretary_email"):
+                event_general_info += f"\nEmail organizzazione: {ev['secretary_email']}"
+        event_locs_result = supabase.table("locations").select("*").eq("event_id", event_id).execute()
+        event_locs = event_locs_result.data or []
+
+    def build_location_context(locations, label):
+        if not locations:
+            return ""
+        lines = [f"{label}:"]
+        for loc in locations:
             line = f"- {loc['name']} ({loc['type']})"
             if loc.get("notes"):
                 line += f": {loc['notes']}"
             if loc.get("provisions"):
                 line += f" — Dotazione: {loc['provisions']}"
-            if loc.get("google_maps_url"):
-                line += f"\n  → LINK MAPPA DA INCLUDERE NELLA RISPOSTA: {loc['google_maps_url']}"
+            url = loc.get("google_maps_url")
+            if not url and loc.get("lat") and loc.get("lng"):
+                url = f"https://www.google.com/maps?q={loc['lat']},{loc['lng']}"
+            if url:
+                line += f"\n  → LINK MAPPA: {url}"
             lines.append(line)
-        location_context = "\n".join(lines)
+        return "\n".join(lines)
+
+    location_context = build_location_context(locs, "Posizioni specifiche della gara")
+    if event_locs:
+        event_loc_context = build_location_context(event_locs, "Posizioni generali dell'evento (segreteria, hotel, parcheggi comuni)")
+        location_context = event_loc_context + ("\n\n" + location_context if location_context else "")
+    if event_general_info:
+        location_context = event_general_info + ("\n\n" + location_context if location_context else "")
 
     qa_context = get_qa_context(race_id)
     race_info = {
@@ -493,9 +569,8 @@ async def ask_question(
     ]
 
     # Prepara dizionario posizioni con link per iniezione automatica
-    # Usa google_maps_url se disponibile, altrimenti genera da coordinate
     locs_with_links = {}
-    for loc in locs:
+    for loc in (locs + event_locs):
         url = loc.get("google_maps_url")
         if not url and loc.get("lat") and loc.get("lng"):
             url = f"https://www.google.com/maps?q={loc['lat']},{loc['lng']}"
@@ -1035,10 +1110,12 @@ def page_event_detail(request: Request, event_id: str, session: str = Cookie(def
         raise HTTPException(status_code=404)
     event = result.data[0]
     races = supabase.table("races").select("*").eq("event_id", event_id).execute().data or []
+    event_locations = supabase.table("locations").select("*").eq("event_id", event_id).execute().data or []
     return templates.TemplateResponse(request=request, name="event_detail.html", context={
         "organizer": organizer,
         "event": event,
-        "races": races
+        "races": races,
+        "event_locations": event_locations
     })
 
 
