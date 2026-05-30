@@ -156,7 +156,7 @@
     <!-- INFO GENERALI EVENTO -->
     <div class="card">
       <h2>📋 Info generali evento <span style="font-size:12px;font-weight:400;color:#94a3b8;margin-left:8px;">Visibili nel chatbot per tutte le gare</span></h2>
-      <form method="POST" action="/api/events/{{ event.id }}/general-info">
+      <form method="POST" action="/api/events/{{ event.id }}/general-info" enctype="multipart/form-data">
         <div style="margin-bottom:12px;">
           <label style="display:block;font-size:12px;font-weight:600;color:#6b7280;text-transform:uppercase;letter-spacing:0.4px;margin-bottom:4px;">Segreteria / Ritiro pettorali</label>
           <input type="text" name="secretary_location" value="{{ event.secretary_location or '' }}" placeholder="es. Palazzetto dello Sport, Via Roma 1, Arco" style="width:100%;padding:9px 12px;border:1.5px solid #e5e7eb;border-radius:8px;font-size:14px;outline:none;background:#fafafa;">
@@ -168,6 +168,16 @@
         <div style="margin-bottom:14px;">
           <label style="display:block;font-size:12px;font-weight:600;color:#6b7280;text-transform:uppercase;letter-spacing:0.4px;margin-bottom:4px;">Info generali <span style="text-transform:none;font-weight:400;">(come arrivare, hotel, info area)</span></label>
           <textarea name="general_info" placeholder="es. L'evento si svolge ad Arco (TN). Per arrivare in auto: A22 uscita Rovereto Sud, poi SS240 verso Arco. Hotel convenzionati: Hotel Lido (10% sconto con codice TENNOTRAIL)..." style="width:100%;padding:9px 12px;border:1.5px solid #e5e7eb;border-radius:8px;font-size:14px;outline:none;background:#fafafa;resize:vertical;min-height:100px;font-family:inherit;">{{ event.general_info or '' }}</textarea>
+        </div>
+        <div style="margin-bottom:14px;">
+          <label style="display:block;font-size:12px;font-weight:600;color:#6b7280;text-transform:uppercase;letter-spacing:0.4px;margin-bottom:6px;">Logo evento <span style="text-transform:none;font-weight:400;">(opzionale — appare nel chatbot al posto della coppa)</span></label>
+          {% if event.chatbot_logo_url %}
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;">
+            <img src="{{ event.chatbot_logo_url }}" style="height:40px;border-radius:8px;border:1px solid #e2e8f0;">
+            <span style="font-size:12px;color:#64748b;">Logo attuale</span>
+          </div>
+          {% endif %}
+          <input type="file" name="event_logo" accept="image/*" style="font-size:13px;color:#374151;">
         </div>
         <button type="submit" style="padding:9px 20px;background:#2563eb;color:white;border:none;border-radius:8px;font-size:14px;font-weight:600;cursor:pointer;">Salva info generali</button>
       </form>

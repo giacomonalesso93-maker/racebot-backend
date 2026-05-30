@@ -112,7 +112,13 @@
 
   <header>
     <div class="header-left">
-      <div class="header-avatar">🏆</div>
+      <div class="header-avatar">
+        {% if event.chatbot_logo_url %}
+          <img src="{{ event.chatbot_logo_url }}" style="width:34px;height:34px;object-fit:contain;border-radius:8px;" alt="logo">
+        {% else %}
+          🏆
+        {% endif %}
+      </div>
       <div class="header-info">
         <h1>{{ event.name }}</h1>
         <div class="subtitle" id="header-sub">
@@ -188,13 +194,19 @@
         .replace(/(https?:\/\/[^\s<&]+)/g,'<a href="$1" target="_blank">🗺️ Apri mappa</a>');
     }
 
+    var EVENT_LOGO = "{{ event.chatbot_logo_url or '' }}";
+
     function addMessage(text, type) {
       var row = document.createElement("div");
       row.className = "msg-row" + (type === "user" ? " user-row" : "");
       if (type !== "user") {
         var av = document.createElement("div");
         av.className = "msg-avatar";
-        av.textContent = "🏆";
+        if (EVENT_LOGO) {
+          av.innerHTML = '<img src="' + EVENT_LOGO + '" style="width:22px;height:22px;object-fit:contain;border-radius:4px;" alt="logo">';
+        } else {
+          av.textContent = "🏆";
+        }
         row.appendChild(av);
       }
       var div = document.createElement("div");

@@ -274,16 +274,27 @@ async def save_event_general_info(
     general_info: str = Form(""),
     secretary_location: str = Form(""),
     secretary_email: str = Form(""),
+    event_logo: UploadFile = File(None),
     session: str = Cookie(default=None)
 ):
     organizer = get_current_organizer(session) if session else None
     if not organizer:
         raise HTTPException(status_code=401, detail="Non autenticato")
-    supabase.table("events").update({
+    update_data = {
         "general_info": general_info or None,
         "secretary_location": secretary_location or None,
         "secretary_email": secretary_email or None,
-    }).eq("id", event_id).execute()
+    }
+    if event_logo and event_logo.filename:
+        ext = event_logo.filename.rsplit(".", 1)[-1].lower()
+        if ext in ["png", "jpg", "jpeg", "svg", "webp"]:
+            logo_filename = f"event_logo_{event_id}.{ext}"
+            logo_path = os.path.join("static", logo_filename)
+            content = await event_logo.read()
+            with open(logo_path, "wb") as f:
+                f.write(content)
+            update_data["chatbot_logo_url"] = f"/static/{logo_filename}"
+    supabase.table("events").update(update_data).eq("id", event_id).execute()
     return RedirectResponse(url=f"/dashboard/events/{event_id}?ok=Info+generali+salvate", status_code=303)
 
 
