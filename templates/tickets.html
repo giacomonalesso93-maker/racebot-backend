@@ -6,11 +6,19 @@
   <title>Repliq — Ticket</title>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
-    body { font-family: system-ui, sans-serif; background: #f0f2f5; }
-    header { background: white; padding: 16px 32px; display: flex; align-items: center; justify-content: space-between; box-shadow: 0 1px 4px rgba(0,0,0,0.08); }
-    header h1 { font-size: 22px; color: #2563eb; font-weight: 800; }
-    nav a { color: #374151; text-decoration: none; margin-left: 20px; font-size: 14px; }
-    nav a:hover { color: #2563eb; }
+    body { font-family: system-ui, sans-serif; background: #f4f6fb; }
+    header {
+      background: linear-gradient(135deg, #1e40af 0%, #2563eb 100%);
+      padding: 0 32px; height: 64px;
+      display: flex; align-items: center; justify-content: space-between;
+      box-shadow: 0 2px 12px rgba(37,99,235,0.25);
+    }
+    .header-left { display:flex; align-items:center; gap:12px; }
+    .header-brand { font-size:20px; font-weight:900; color:white; letter-spacing:-0.3px; }
+    .header-sub { font-size:11px; color:rgba(255,255,255,0.6); margin-top:1px; }
+    nav a { color: rgba(255,255,255,0.8); text-decoration: none; margin-left: 16px; font-size: 13px; padding:6px 12px; border-radius:8px; transition:background 0.15s; }
+    nav a:hover { background:rgba(255,255,255,0.15); color:white; }
+    nav a[style*="ef4444"] { color:rgba(255,150,150,0.9) !important; }
     .container { max-width: 900px; margin: 40px auto; padding: 0 20px; }
     h2 { font-size: 20px; color: #111827; margin-bottom: 20px; }
     .ticket { background: white; border-radius: 10px; padding: 24px; margin-bottom: 16px; box-shadow: 0 2px 8px rgba(0,0,0,0.06); }
@@ -29,12 +37,17 @@
 </head>
 <body>
   <header>
-    <h1>🏃 Repliq</h1>
+    <div class="header-left">
+      <div>
+        <div class="header-brand">Repliq</div>
+        <div class="header-sub">Gestione ticket</div>
+      </div>
+    </div>
     <nav>
-      <a href="/dashboard">Dashboard</a>
-      <a href="/dashboard/tickets">Ticket</a>
-      <a href="/dashboard/export/tickets" style="color:#2563eb;">⬇️ Esporta CSV</a>
-      <a href="/api/logout" style="color:#ef4444">Esci</a>
+      <a href="/dashboard">← Dashboard</a>
+      <a href="/dashboard/tickets">🎟️ Ticket</a>
+      <a href="/dashboard/export/tickets">⬇️ Esporta CSV</a>
+      <a href="/api/logout">Esci</a>
     </nav>
   </header>
 

@@ -3,102 +3,162 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>{{ event.name }} — Assistente virtuale</title>
+  <title>{{ event.name }} — Repliq</title>
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
-    body { font-family: system-ui, sans-serif; background: #f0f2f5; display: flex; flex-direction: column; height: 100vh; }
+    body { font-family: system-ui, -apple-system, sans-serif; background: #f8fafc; display: flex; flex-direction: column; height: 100vh; overflow: hidden; }
 
-    header { background: #2563eb; color: white; padding: 14px 20px; display: flex; align-items: center; justify-content: space-between; }
-    .header-info h1 { font-size: 17px; font-weight: 700; }
-    .header-info p { font-size: 12px; opacity: 0.8; margin-top: 2px; }
-    .map-toggle {
-      background: rgba(255,255,255,0.2); border: none; color: white;
-      padding: 6px 14px; border-radius: 20px; font-size: 13px; cursor: pointer;
-      display: none;
+    /* ── HEADER ── */
+    header {
+      background: linear-gradient(135deg, #1e3a8a 0%, #1d4ed8 60%, #2563eb 100%);
+      color: white; padding: 0 20px; height: 68px;
+      display: flex; align-items: center; justify-content: space-between;
+      flex-shrink: 0; box-shadow: 0 4px 24px rgba(29,78,216,0.3);
+      position: relative; overflow: hidden;
     }
-    .map-toggle:hover { background: rgba(255,255,255,0.3); }
+    header::before { content:''; position:absolute; top:-30px; right:-30px; width:120px; height:120px; background:rgba(255,255,255,0.06); border-radius:50%; }
+    .header-left { display:flex; align-items:center; gap:12px; position:relative; z-index:1; }
+    .header-avatar { width:42px; height:42px; border-radius:12px; background:rgba(255,255,255,0.15); border:1.5px solid rgba(255,255,255,0.25); display:flex; align-items:center; justify-content:center; font-size:20px; }
+    .header-info h1 { font-size:15px; font-weight:800; line-height:1.2; letter-spacing:-0.3px; }
+    .header-info .subtitle { font-size:11px; opacity:0.7; margin-top:2px; display:flex; align-items:center; gap:5px; }
+    .online-dot { width:6px; height:6px; background:#4ade80; border-radius:50%; box-shadow:0 0 6px rgba(74,222,128,0.6); animation:pulse-green 2s infinite; }
+    @keyframes pulse-green { 0%,100%{opacity:1;} 50%{opacity:0.5;} }
+    .header-right { display:flex; align-items:center; gap:8px; position:relative; z-index:1; }
+    .header-brand { font-size:11px; font-weight:900; letter-spacing:1px; color:rgba(255,255,255,0.5); text-transform:uppercase; }
+    .header-btn { background:rgba(255,255,255,0.12); border:1px solid rgba(255,255,255,0.2); color:white; padding:6px 14px; border-radius:20px; font-size:12px; font-weight:600; cursor:pointer; text-decoration:none; transition:background 0.15s; }
+    .header-btn { display:none; }
+    .header-btn:hover { background:rgba(255,255,255,0.22); }
+    #map-btn { display:none; }
 
-    #map-panel { display: none; background: white; border-bottom: 1px solid #e5e7eb; }
-    #map { height: 220px; }
-    .loc-list-chat { padding: 8px 14px; display: flex; flex-wrap: wrap; gap: 6px; }
-    .loc-chip { font-size: 12px; background: #f3f4f6; border-radius: 20px; padding: 4px 10px; text-decoration: none; color: #374151; }
-    .loc-chip:hover { background: #e5e7eb; }
+    /* ── MAP ── */
+    #map-panel { display:none; flex-shrink:0; border-bottom:1px solid #e2e8f0; }
+    #map { height:200px; }
+    .loc-chips { padding:8px 14px; display:flex; flex-wrap:wrap; gap:6px; background:#f8fafc; }
+    .loc-chip { font-size:12px; background:white; border-radius:20px; padding:4px 12px; text-decoration:none; color:#475569; border:1px solid #e2e8f0; transition:all 0.15s; }
+    .loc-chip:hover { background:#2563eb; color:white; border-color:#2563eb; }
 
-    .messages { flex: 1; overflow-y: auto; padding: 20px; display: flex; flex-direction: column; gap: 12px; }
-    .msg { max-width: 80%; padding: 12px 16px; border-radius: 12px; font-size: 15px; line-height: 1.5; }
-    .msg.bot { background: white; color: #111827; box-shadow: 0 1px 4px rgba(0,0,0,0.08); align-self: flex-start; border-bottom-left-radius: 4px; }
-    .msg.user { background: #2563eb; color: white; align-self: flex-end; border-bottom-right-radius: 4px; }
-    .msg.typing { color: #9ca3af; font-style: italic; }
+    /* ── MESSAGES ── */
+    .messages { flex:1; overflow-y:auto; padding:16px; display:flex; flex-direction:column; gap:14px; background:#f8fafc; }
+    .messages::-webkit-scrollbar { width:3px; }
+    .messages::-webkit-scrollbar-thumb { background:#cbd5e1; border-radius:4px; }
 
-    .race-selector { align-self: flex-start; display: flex; flex-wrap: wrap; gap: 10px; margin-top: 4px; }
-    .race-btn {
-      background: white; border: 2px solid #2563eb; color: #2563eb;
-      padding: 10px 20px; border-radius: 24px; font-size: 14px; font-weight: 600;
-      cursor: pointer; transition: all 0.15s;
+    .msg-row { display:flex; align-items:flex-end; gap:8px; }
+    .msg-row.user-row { flex-direction:row-reverse; }
+    .msg-avatar { width:32px; height:32px; border-radius:10px; flex-shrink:0; background:linear-gradient(135deg,#2563eb,#1d4ed8); display:flex; align-items:center; justify-content:center; font-size:15px; box-shadow:0 2px 8px rgba(37,99,235,0.25); }
+
+    .msg { max-width:78%; padding:11px 15px; font-size:14px; line-height:1.65; border-radius:18px; word-wrap:break-word; }
+    .msg.bot { background:white; color:#1e293b; border:1px solid #e2e8f0; border-bottom-left-radius:4px; box-shadow:0 1px 6px rgba(0,0,0,0.06); }
+    .msg.bot strong { color:#2563eb; }
+    .msg.bot a { color:#2563eb; text-decoration:underline; }
+    .msg.user { background:linear-gradient(135deg,#2563eb,#1d4ed8); color:white; border-bottom-right-radius:4px; box-shadow:0 3px 12px rgba(37,99,235,0.3); }
+    .msg.streaming::after { content:"▋"; display:inline; animation:blink 0.7s step-end infinite; color:#2563eb; margin-left:2px; font-size:12px; }
+    @keyframes blink { 0%,100%{opacity:1;} 50%{opacity:0;} }
+
+    .typing-indicator { display:flex; align-items:center; gap:5px; padding:12px 16px; }
+    .typing-indicator span { width:7px; height:7px; background:#94a3b8; border-radius:50%; animation:bounce 1.2s infinite; }
+    .typing-indicator span:nth-child(2) { animation-delay:0.2s; }
+    .typing-indicator span:nth-child(3) { animation-delay:0.4s; }
+    @keyframes bounce { 0%,60%,100%{transform:translateY(0);opacity:.4;} 30%{transform:translateY(-7px);opacity:1;} }
+
+    /* Race selector */
+    .race-selector-wrap { display:flex; flex-direction:column; gap:8px; }
+    .race-btn { background:white; border:2px solid #2563eb; color:#2563eb; padding:10px 18px; border-radius:14px; font-size:14px; font-weight:700; cursor:pointer; transition:all 0.15s; text-align:left; }
+    .race-btn:hover { background:#2563eb; color:white; transform:translateY(-1px); box-shadow:0 4px 12px rgba(37,99,235,0.25); }
+
+    /* Quick replies */
+    .quick-replies { display:flex; flex-wrap:wrap; gap:8px; padding:4px 0 4px 40px; }
+    .quick-reply-btn { background:#eff6ff; border:1px solid #bfdbfe; color:#1d4ed8; padding:6px 14px; border-radius:20px; font-size:13px; font-weight:600; cursor:pointer; transition:all 0.15s; white-space:nowrap; }
+    .quick-reply-btn:hover { background:#2563eb; color:white; border-color:#2563eb; }
+
+    /* ── INPUT ── */
+    .input-area { background:white; padding:10px 14px 14px; display:flex; gap:10px; align-items:center; border-top:1px solid #e2e8f0; flex-shrink:0; }
+    .input-wrap { flex:1; display:flex; align-items:center; background:#f8fafc; border:1.5px solid #e2e8f0; border-radius:24px; padding:0 16px; transition:border-color 0.2s, box-shadow 0.2s; }
+    .input-wrap:focus-within { border-color:#2563eb; box-shadow:0 0 0 3px rgba(37,99,235,0.1); background:white; }
+    .input-wrap input { flex:1; padding:11px 0; border:none; background:transparent; font-size:14px; outline:none; color:#0f172a; }
+    .input-wrap input::placeholder { color:#94a3b8; }
+    .input-wrap input:disabled { cursor:not-allowed; }
+    .send-btn { width:44px; height:44px; border-radius:14px; background:linear-gradient(135deg,#2563eb,#1d4ed8); border:none; color:white; font-size:18px; cursor:pointer; display:flex; align-items:center; justify-content:center; box-shadow:0 4px 12px rgba(37,99,235,0.4); transition:transform 0.15s, box-shadow 0.15s, opacity 0.15s; flex-shrink:0; }
+    .send-btn:hover { transform:scale(1.06) translateY(-1px); }
+    .send-btn:disabled { opacity:0.4; box-shadow:none; cursor:not-allowed; transform:none; }
+    .powered-by { text-align:center; font-size:11px; color:#94a3b8; padding-bottom:4px; letter-spacing:0.5px; }
+    .powered-by span { color:#2563eb; font-weight:700; }
+
+    /* ── MODAL ── */
+    .modal-overlay { display:none; position:fixed; inset:0; background:rgba(0,0,0,0.5); backdrop-filter:blur(4px); align-items:flex-end; justify-content:center; z-index:999; }
+    .modal-sheet { background:white; border-radius:24px 24px 0 0; padding:24px 24px 36px; width:100%; max-width:480px; border-top:1px solid #e2e8f0; animation:slideUp 0.25s ease; }
+    @keyframes slideUp { from{transform:translateY(100%);} to{transform:translateY(0);} }
+    .modal-handle { width:36px; height:4px; background:#e2e8f0; border-radius:2px; margin:0 auto 20px; }
+    .modal-sheet h3 { font-size:16px; font-weight:800; color:#0f172a; margin-bottom:6px; }
+    .modal-sheet p { font-size:13px; color:#64748b; margin-bottom:16px; line-height:1.5; }
+    .modal-sheet input { width:100%; padding:12px 14px; background:#f8fafc; border:1.5px solid #e2e8f0; border-radius:12px; font-size:14px; outline:none; color:#0f172a; margin-bottom:12px; }
+    .modal-sheet input:focus { border-color:#2563eb; }
+    .modal-sheet input::placeholder { color:#94a3b8; }
+    .modal-sheet .modal-actions { display:flex; gap:8px; }
+    .modal-sheet .modal-actions button { flex:1; padding:12px; border:none; border-radius:12px; font-size:14px; font-weight:700; cursor:pointer; }
+
+    @media (max-width:480px) {
+      .msg { max-width:88%; font-size:13px; }
+      .header-brand { display:none; }
     }
-    .race-btn:hover { background: #2563eb; color: white; }
-
-    .input-area { background: white; padding: 14px 18px; display: flex; gap: 10px; border-top: 1px solid #e5e7eb; }
-    .input-area input {
-      flex: 1; padding: 10px 16px; border: 1px solid #d1d5db;
-      border-radius: 24px; font-size: 15px; outline: none;
-    }
-    .input-area input:focus { border-color: #2563eb; }
-    .input-area input:disabled { background: #f9fafb; cursor: not-allowed; }
-    .input-area button {
-      padding: 10px 20px; background: #2563eb; color: white;
-      border: none; border-radius: 24px; font-size: 15px; font-weight: 600; cursor: pointer;
-    }
-    .input-area button:hover { background: #1d4ed8; }
-    .input-area button:disabled { background: #d1d5db; cursor: not-allowed; }
-
-    #email-modal { display:none; position:fixed; inset:0; background:rgba(0,0,0,0.4); align-items:center; justify-content:center; }
-    #email-modal .modal-box { background:white; border-radius:12px; padding:28px; width:90%; max-width:380px; }
   </style>
 </head>
 <body>
+
   <header>
-    <div class="header-info">
-      <h1>🏃 {{ event.name }}</h1>
-      <p id="header-sub">Assistente virtuale{% if event.date %} · {{ event.date }}{% endif %}</p>
+    <div class="header-left">
+      <div class="header-avatar">🏆</div>
+      <div class="header-info">
+        <h1>{{ event.name }}</h1>
+        <div class="subtitle" id="header-sub">
+          <span class="online-dot"></span>
+          Assistente virtuale{% if event.date %} · {{ event.date }}{% endif %}
+        </div>
+      </div>
     </div>
-    <button class="map-toggle" id="map-btn" onclick="toggleMap()">📍 Mappa</button>
+    <div class="header-right">
+      <span class="header-brand">Repliq</span>
+      <button class="header-btn" id="map-btn" onclick="toggleMap()">📍 Mappa</button>
+    </div>
   </header>
 
   <div id="map-panel">
     <div id="map"></div>
-    <div class="loc-list-chat" id="loc-chips"></div>
+    <div class="loc-chips" id="loc-chips"></div>
   </div>
 
   <div class="messages" id="messages">
-    <div class="msg bot">
-      Ciao! 👋 Benvenuto all'assistente virtuale di <strong>{{ event.name }}</strong>.<br><br>
-      A quale gara sei iscritto?
+    <div class="msg-row">
+      <div class="msg-avatar">🏆</div>
+      <div class="msg bot">Ciao! 👋 Benvenuto all'assistente virtuale di <strong>{{ event.name }}</strong>.<br><br>A quale gara sei iscritto?</div>
     </div>
-    <div class="race-selector" id="race-selector">
+    <div class="race-selector-wrap" id="race-selector">
       {% for race in races %}
       <button class="race-btn" onclick="selectRace('{{ race.id }}', '{{ race.name }}')">
-        🏃 {{ race.name }}{% if race.date %} <span style="font-weight:400;font-size:12px;">({{ race.date }})</span>{% endif %}
+        🏃 {{ race.name }}{% if race.date %} <span style="font-weight:400;font-size:12px;opacity:0.7;">({{ race.date }})</span>{% endif %}
       </button>
       {% endfor %}
     </div>
   </div>
 
   <div class="input-area">
-    <input type="text" id="question" placeholder="Prima seleziona la tua gara..." disabled autocomplete="off">
-    <button id="send-btn" onclick="sendMessage()" disabled>Invia</button>
+    <div class="input-wrap">
+      <input type="text" id="question" placeholder="Prima seleziona la tua gara..." disabled autocomplete="off">
+    </div>
+    <button class="send-btn" id="send-btn" onclick="sendMessage()" disabled>➤</button>
   </div>
+  <div class="powered-by">Powered by <span>Repliq</span> AI</div>
 
-  <div id="email-modal">
-    <div class="modal-box">
-      <h3 style="margin-bottom:8px;">Vuoi ricevere una risposta?</h3>
-      <p style="font-size:14px;color:#6b7280;margin-bottom:16px;">La tua domanda è stata inoltrata all'organizzatore. Lascia la tua email per ricevere la risposta.</p>
-      <input type="email" id="participant-email" placeholder="tua@email.it" style="width:100%;padding:10px;border:1px solid #d1d5db;border-radius:8px;font-size:14px;margin-bottom:12px;">
-      <div style="display:flex;gap:8px;">
-        <button onclick="submitEmail()" style="flex:1;padding:10px;background:#2563eb;color:white;border:none;border-radius:8px;cursor:pointer;">Invia</button>
-        <button onclick="closeModal()" style="flex:1;padding:10px;background:#f3f4f6;border:none;border-radius:8px;cursor:pointer;">Salta</button>
+  <div class="modal-overlay" id="email-modal">
+    <div class="modal-sheet">
+      <div class="modal-handle"></div>
+      <h3>📧 Ricevi la risposta via email</h3>
+      <p>La tua domanda è stata inoltrata all'organizzatore. Lascia la tua email e ti risponderemo appena possibile.</p>
+      <input type="email" id="participant-email" placeholder="tua@email.it">
+      <div class="modal-actions">
+        <button onclick="submitEmail()" style="background:linear-gradient(135deg,#2563eb,#1d4ed8);color:white;">Invia</button>
+        <button onclick="closeModal()" style="background:#f1f5f9;color:#475569;">Salta</button>
       </div>
     </div>
   </div>
@@ -109,42 +169,60 @@
     var currentRaceName = null;
     var pendingTicketId = null;
     var mapInitialized = false;
-
-    var messages = document.getElementById("messages");
+    var messagesEl = document.getElementById("messages");
     var input = document.getElementById("question");
     var sendBtn = document.getElementById("send-btn");
 
     input.addEventListener("keydown", function(e) { if (e.key === "Enter") sendMessage(); });
 
-    function formatText(text) {
+    function fmt(text) {
       return text
-        .replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>")
-        .replace(/\*(.*?)\*/g, "<em>$1</em>")
-        .replace(/(https?:\/\/[^\s<]+)/g, '<a href="$1" target="_blank" style="color:#2563eb;text-decoration:underline;">🗺️ Apri mappa</a>')
-        .replace(/\n/g, "<br>");
+        .replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;")
+        .replace(/\n/g,"<br>")
+        .replace(/\*\*(.*?)\*\*/g,"<strong>$1</strong>")
+        .replace(/\*(.*?)\*/g,"<em>$1</em>")
+        .replace(/(https?:\/\/[^\s<&]+)/g,'<a href="$1" target="_blank">🗺️ Apri mappa</a>');
     }
 
     function addMessage(text, type) {
+      var row = document.createElement("div");
+      row.className = "msg-row" + (type === "user" ? " user-row" : "");
+      if (type !== "user") {
+        var av = document.createElement("div");
+        av.className = "msg-avatar";
+        av.textContent = "🏆";
+        row.appendChild(av);
+      }
       var div = document.createElement("div");
-      div.className = "msg " + type;
-      div.innerHTML = formatText(text);
-      messages.appendChild(div);
-      messages.scrollTop = messages.scrollHeight;
+      div.className = "msg " + (type === "user" ? "user" : type === "streaming" ? "bot streaming" : "bot");
+      if (type === "typing") {
+        div.innerHTML = '<div class="typing-indicator"><span></span><span></span><span></span></div>';
+      } else {
+        div.innerHTML = fmt(text);
+      }
+      row.appendChild(div);
+      messagesEl.appendChild(row);
+      messagesEl.scrollTop = messagesEl.scrollHeight;
       return div;
     }
 
     function selectRace(raceId, raceName) {
       currentRaceId = raceId;
       currentRaceName = raceName;
-
       document.getElementById("race-selector").remove();
-      addMessage("Sono iscritto alla <strong>" + raceName + "</strong>", "user");
 
-      // Carica info gara per il messaggio di benvenuto
+      var userRow = document.createElement("div");
+      userRow.className = "msg-row user-row";
+      var userMsg = document.createElement("div");
+      userMsg.className = "msg user";
+      userMsg.innerHTML = "Sono iscritto alla <strong>" + raceName + "</strong>";
+      userRow.appendChild(userMsg);
+      messagesEl.appendChild(userRow);
+
       fetch("/api/races/" + raceId + "/info")
         .then(function(r) { return r.json(); })
         .then(function(info) {
-          var welcome = "Ciao! 👋 Sono l'assistente virtuale della <strong>" + raceName + "</strong>.";
+          var welcome = "Perfetto! 🎽 Sono l'assistente della <strong>" + raceName + "</strong>.";
           if (info.date || info.start_time || info.location || info.length_km) {
             welcome += "<br><br>📋 <strong>Info gara:</strong>";
             if (info.date) welcome += "<br>📅 Data: " + info.date;
@@ -153,12 +231,12 @@
             if (info.length_km) welcome += "<br>📏 Distanza: " + info.length_km + " km";
             if (info.elevation_gain) welcome += "<br>⛰️ Dislivello: " + info.elevation_gain;
           }
-          welcome += "<br><br>Posso aiutarti con: regolamento, logistica, parcheggi, ristori, materiale obbligatorio e molto altro.";
+          welcome += "<br><br>Posso aiutarti con regolamento, logistica, parcheggi, ristori e molto altro.";
           addMessage(welcome, "bot");
           showQuickReplies();
         })
         .catch(function() {
-          addMessage("Ciao! 👋 Sono l'assistente della <strong>" + raceName + "</strong>. Come posso aiutarti?", "bot");
+          addMessage("Perfetto! 🎽 Sono l'assistente della <strong>" + raceName + "</strong>. Come posso aiutarti?", "bot");
           showQuickReplies();
         });
 
@@ -167,13 +245,13 @@
       sendBtn.disabled = false;
       input.focus();
       document.getElementById("map-btn").style.display = "block";
-      document.getElementById("header-sub").textContent = raceName;
+      document.getElementById("header-sub").innerHTML = '<span class="online-dot"></span> ' + raceName;
     }
 
     function showQuickReplies() {
       var container = document.createElement("div");
-      container.id = "quick-replies";
-      container.style.cssText = "display:flex;flex-wrap:wrap;gap:8px;padding:8px 12px;";
+      container.className = "quick-replies";
+      container.id = "quick-replies-row";
       var questions = [
         "🅿️ Dove sono i parcheggi?",
         "⏰ A che ora parte la gara?",
@@ -183,8 +261,8 @@
       ];
       questions.forEach(function(q) {
         var btn = document.createElement("button");
+        btn.className = "quick-reply-btn";
         btn.textContent = q;
-        btn.style.cssText = "background:#eff6ff;border:1px solid #bfdbfe;color:#1d4ed8;padding:6px 12px;border-radius:20px;font-size:13px;cursor:pointer;white-space:nowrap;";
         btn.onclick = function() {
           container.remove();
           input.value = q.replace(/^[^\s]+\s/, "");
@@ -192,13 +270,13 @@
         };
         container.appendChild(btn);
       });
-      messages.appendChild(container);
-      messages.scrollTop = messages.scrollHeight;
+      messagesEl.appendChild(container);
+      messagesEl.scrollTop = messagesEl.scrollHeight;
     }
 
     function toggleMap() {
       var panel = document.getElementById("map-panel");
-      var isHidden = panel.style.display === "none" || panel.style.display === "";
+      var isHidden = panel.style.display === "none" || !panel.style.display;
       panel.style.display = isHidden ? "block" : "none";
       if (!mapInitialized && isHidden) initMap();
     }
@@ -206,7 +284,6 @@
     function initMap() {
       mapInitialized = true;
       var icons = { partenza:"🏁", arrivo:"🏆", parcheggio:"🅿️", ristoro:"🍌", punto_medico:"🏥", altro:"📍" };
-
       fetch("/api/races/" + currentRaceId + "/locations")
         .then(function(r) { return r.json(); })
         .then(function(locations) {
@@ -220,33 +297,29 @@
             chip.target = "_blank";
             chips.appendChild(chip);
           });
-
           var withCoords = locations.filter(function(l) { return l.lat && l.lng; });
           var map = L.map("map");
           L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png").addTo(map);
-
           fetch("/api/races/" + currentRaceId + "/gpx-track")
             .then(function(r) { return r.json(); })
             .then(function(track) {
               if (track && track.length > 0) {
                 var pts = track.map(function(p) { return [+p[0], +p[1]]; });
-                L.polyline(pts, { color: "#2563eb", weight: 3, opacity: 0.85 }).addTo(map);
-                // Calcola bbox dalla traccia
+                L.polyline(pts, { color:"#2563eb", weight:3, opacity:0.85 }).addTo(map);
                 var lats = pts.map(function(p){ return p[0]; });
                 var lngs = pts.map(function(p){ return p[1]; });
-                map.fitBounds([[Math.min.apply(null,lats), Math.min.apply(null,lngs)], [Math.max.apply(null,lats), Math.max.apply(null,lngs)]], { padding: [10,10] });
+                map.fitBounds([[Math.min.apply(null,lats),Math.min.apply(null,lngs)],[Math.max.apply(null,lats),Math.max.apply(null,lngs)]], {padding:[10,10]});
               } else if (withCoords.length > 0) {
                 map.setView([withCoords[0].lat, withCoords[0].lng], 13);
               } else {
                 map.setView([41.9, 12.5], 6);
-                document.getElementById("map").innerHTML = '<p style="text-align:center;padding:20px;color:#9ca3af;">Nessuna mappa disponibile per questa gara.</p>';
               }
-
               withCoords.forEach(function(loc) {
-                var icon = L.divIcon({ html: icons[loc.type] || "📍", className: "", iconSize: [24, 24] });
+                var icon = L.divIcon({ html: icons[loc.type]||"📍", className:"", iconSize:[24,24] });
                 var popup = "<strong>" + loc.name + "</strong>";
                 if (loc.provisions) popup += "<br><span style='font-size:12px;'>🍌 " + loc.provisions + "</span>";
-                L.marker([loc.lat, loc.lng], { icon: icon }).addTo(map).bindPopup(popup);
+                if (loc.google_maps_url) popup += '<br><a href="' + loc.google_maps_url + '" target="_blank" style="color:#2563eb;font-size:12px;">🗺️ Apri in Maps</a>';
+                L.marker([loc.lat, loc.lng], { icon:icon }).addTo(map).bindPopup(popup);
               });
             });
         });
@@ -257,64 +330,57 @@
       var question = input.value.trim();
       if (!question) return;
       input.value = "";
+      sendBtn.disabled = true;
 
       addMessage(question, "user");
-      var typing = addMessage("Sto cercando nel regolamento...", "bot typing");
+      conversationHistory.push({ role:"user", content:question });
+      var botDiv = addMessage("", "streaming");
+      var fullText = "";
 
       try {
-        var formData = new FormData();
-        formData.append("question", question);
-        formData.append("history", JSON.stringify(conversationHistory || []));
+        var fd = new FormData();
+        fd.append("question", question);
+        fd.append("history", JSON.stringify(conversationHistory.slice(0,-1)));
+        var resp = await fetch("/api/ask/" + currentRaceId, { method:"POST", body:fd });
+        if (!resp.ok) { botDiv.className="msg bot"; botDiv.innerHTML=fmt("Errore del server. Riprova."); conversationHistory.pop(); return; }
 
-        var res = await fetch("/api/ask/" + currentRaceId, { method: "POST", body: formData });
-        if (!res.ok) { typing.remove(); addMessage("Errore del server. Riprova.", "bot"); return; }
-
-        typing.remove();
-        var botMsg = addMessage("", "bot");
-        var fullText = "";
-
-        var reader = res.body.getReader();
-        var decoder = new TextDecoder();
-        var buffer = "";
-
+        var reader = resp.body.getReader();
+        var dec = new TextDecoder();
+        var buf = "";
         while (true) {
-          var _ref = await reader.read();
-          var done = _ref.done, value = _ref.value;
-          if (done) break;
-          buffer += decoder.decode(value, { stream: true });
-          var lines = buffer.split("\n");
-          buffer = lines.pop();
-          for (var line of lines) {
-            if (line.startsWith("data: ")) {
-              var payload = line.slice(6);
-              if (payload === "[DONE]") {
-                // controlla ticket nel testo finale non serve — arriva via SSE extra
-              } else if (payload.startsWith("[META]")) {
-                try {
-                  var meta = JSON.parse(payload.slice(6));
-                  if (meta.ticket_creato && meta.ticket_id) {
-                    pendingTicketId = meta.ticket_id;
-                    setTimeout(function() {
-                      document.getElementById("email-modal").style.display = "flex";
-                    }, 800);
-                  }
-                } catch(e) {}
-              } else {
-                fullText += payload.replace(/\\n/g, "\n");
-                botMsg.innerHTML = formatText(fullText);
-                var messages = document.getElementById("messages");
-                messages.scrollTop = messages.scrollHeight;
-              }
+          var ref = await reader.read();
+          if (ref.done) break;
+          buf += dec.decode(ref.value, {stream:true});
+          var parts = buf.split("\n\n");
+          buf = parts.pop();
+          for (var part of parts) {
+            if (!part.startsWith("data: ")) continue;
+            var data = part.slice(6);
+            if (data === "[DONE]") { botDiv.classList.remove("streaming"); continue; }
+            if (data.startsWith("[META]")) {
+              try {
+                var meta = JSON.parse(data.slice(6));
+                conversationHistory.push({role:"assistant", content:fullText});
+                if (meta.ticket_creato) {
+                  pendingTicketId = meta.ticket_id;
+                  setTimeout(function() { document.getElementById("email-modal").style.display="flex"; }, 800);
+                }
+              } catch(e) {}
+              continue;
             }
+            if (data.startsWith("[ERROR]")) { botDiv.classList.remove("streaming"); botDiv.innerHTML=fmt("Errore: "+data.slice(7)); continue; }
+            fullText += data.replace(/\\n/g,"\n");
+            botDiv.innerHTML = fmt(fullText);
+            messagesEl.scrollTop = messagesEl.scrollHeight;
           }
         }
-
-        if (!fullText) addMessage("Mi dispiace, non ho trovato informazioni. Contatta la segreteria.", "bot");
-
       } catch(e) {
-        typing.remove();
-        addMessage("Errore di connessione. Riprova.", "bot");
-        console.error(e);
+        botDiv.classList.remove("streaming");
+        botDiv.innerHTML = fmt("Errore di connessione. Riprova.");
+        conversationHistory.pop();
+      } finally {
+        sendBtn.disabled = false;
+        input.focus();
       }
     }
 
@@ -322,18 +388,14 @@
       var email = document.getElementById("participant-email").value.trim();
       if (email && pendingTicketId) {
         await fetch("/api/tickets/" + pendingTicketId + "/email", {
-          method: "POST",
-          headers: {"Content-Type": "application/x-www-form-urlencoded"},
-          body: "email=" + encodeURIComponent(email)
+          method:"POST", headers:{"Content-Type":"application/x-www-form-urlencoded"},
+          body:"email=" + encodeURIComponent(email)
         });
       }
       closeModal();
-      addMessage("Grazie! Riceverai una risposta via email appena disponibile. 📧", "bot");
+      addMessage("Grazie! Riceverai una risposta via email appena possibile. 📧", "bot");
     }
-
-    function closeModal() {
-      document.getElementById("email-modal").style.display = "none";
-    }
+    function closeModal() { document.getElementById("email-modal").style.display="none"; }
   </script>
 </body>
 </html>
