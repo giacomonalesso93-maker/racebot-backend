@@ -1262,7 +1262,7 @@
       document.getElementById("embed-desc").textContent = `Chatbot "${raceName}" — condividi questo link diretto`;
       document.getElementById("direct-link-display").textContent = chatUrl;
       document.getElementById("preview-link-btn").href = chatUrl;
-      document.getElementById("preview-widget-btn").href = widgetUrl;
+      document.getElementById("preview-widget-btn").href = `${base}/widget-preview/${raceId}`;
       const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=360x360&data=${encodeURIComponent(chatUrl)}`;
       document.getElementById("embed-qr").src = qrUrl;
       document.getElementById("qr-download").href = qrUrl;
