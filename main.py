@@ -1258,6 +1258,61 @@ def page_widget_preview(request: Request, race_id: str):
     return HTMLResponse(content=html)
 
 
+@app.get("/widget/event/{event_id}", response_class=HTMLResponse)
+def page_widget_event(request: Request, event_id: str):
+    result = supabase.table("events").select("*").eq("id", event_id).execute()
+    if not result.data:
+        raise HTTPException(status_code=404, detail="Evento non trovato")
+    event = result.data[0]
+    chat_url = str(request.base_url) + f"chat/event/{event_id}"
+    color = "#2563eb"
+    html = f"""<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Repliq Widget — {event['name']}</title>
+  <style>
+    * {{ box-sizing: border-box; margin: 0; padding: 0; }}
+    body {{ font-family: system-ui, sans-serif; background: transparent; }}
+    #rb-bubble {{
+      position: fixed; bottom: 24px; right: 24px;
+      width: 58px; height: 58px;
+      background: linear-gradient(135deg, #1e3a8a, {color});
+      border-radius: 50%; display: flex; align-items: center; justify-content: center;
+      cursor: pointer; z-index: 9999; font-size: 24px;
+      box-shadow: 0 6px 24px rgba(37,99,235,0.45);
+      transition: transform 0.2s;
+    }}
+    #rb-bubble:hover {{ transform: scale(1.08); }}
+    #rb-frame {{
+      position: fixed; bottom: 96px; right: 24px;
+      width: 380px; height: 580px; border: none;
+      border-radius: 20px; z-index: 9998;
+      box-shadow: 0 16px 60px rgba(0,0,0,0.2);
+      transform: scale(0.85) translateY(20px); opacity: 0;
+      pointer-events: none;
+      transition: transform 0.25s cubic-bezier(0.34,1.56,0.64,1), opacity 0.2s;
+      transform-origin: bottom right;
+    }}
+    #rb-frame.open {{ transform: scale(1) translateY(0); opacity: 1; pointer-events: all; }}
+    @media(max-width:440px) {{ #rb-frame {{ width: calc(100vw - 24px); right: 12px; }} #rb-bubble {{ right: 12px; bottom: 12px; }} }}
+  </style>
+</head>
+<body>
+  <div id="rb-bubble" onclick="toggle()">💬</div>
+  <iframe id="rb-frame" src="{chat_url}" title="Repliq Chatbot"></iframe>
+  <script>
+    function toggle() {{
+      document.getElementById("rb-frame").classList.toggle("open");
+      document.getElementById("rb-bubble").textContent = document.getElementById("rb-frame").classList.contains("open") ? "✕" : "💬";
+    }}
+  </script>
+</body>
+</html>"""
+    return HTMLResponse(content=html)
+
+
 @app.get("/widget-preview/event/{event_id}", response_class=HTMLResponse)
 def page_widget_preview_event(request: Request, event_id: str):
     result = supabase.table("events").select("*").eq("id", event_id).execute()
@@ -1325,7 +1380,7 @@ def page_widget_preview_event(request: Request, event_id: str):
       </div>
     </div>
   </div>
-  <iframe src="{chat_url}" class="widget-iframe" title="Repliq Widget"></iframe>
+  <iframe src="{str(request.base_url)}widget/event/{event_id}" class="widget-iframe" title="Repliq Widget"></iframe>
 </body>
 </html>"""
     return HTMLResponse(content=html)
