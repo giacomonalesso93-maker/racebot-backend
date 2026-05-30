@@ -1084,24 +1084,61 @@
 
   <!-- Modal embed -->
   <div id="embed-modal">
-    <div class="modal-box">
-      <h3>🔗 Incorpora il chatbot</h3>
-      <p style="font-size:13px; color:#6b7280; margin-bottom:8px;" id="embed-desc"></p>
-      <textarea id="embed-code" readonly></textarea>
-      <div style="margin-top:14px; display:flex; gap:16px; align-items:flex-start;">
-        <div style="flex:1;">
-          <p style="font-size:12px; font-weight:600; color:#6b7280; text-transform:uppercase; letter-spacing:0.4px; margin-bottom:6px;">QR Code</p>
-          <img id="embed-qr" src="" alt="QR Code" style="width:120px; height:120px; border-radius:8px; border:1px solid #e5e7eb;">
-          <p style="font-size:11px; color:#9ca3af; margin-top:4px;">Stampalo o condividilo</p>
-        </div>
-        <div style="flex:1; display:flex; flex-direction:column; gap:8px; margin-top:22px;">
-          <button class="modal-btn-primary" style="padding:9px;" onclick="copyEmbed()">📋 Copia codice iframe</button>
-          <button class="modal-btn-secondary" style="padding:9px;" id="copy-link-btn" onclick="copyDirectLink()">🔗 Copia link diretto</button>
+    <div class="modal-box" style="max-width:580px;max-height:90vh;overflow-y:auto;">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
+        <h3 style="font-size:17px;font-weight:800;color:#0f172a;">🔗 Distribuisci il chatbot</h3>
+        <button onclick="document.getElementById('embed-modal').style.display='none'" style="width:30px;height:30px;border-radius:8px;border:none;background:#f1f5f9;cursor:pointer;color:#64748b;font-size:14px;">✕</button>
+      </div>
+
+      <!-- TABS -->
+      <div style="display:flex;gap:4px;background:#f1f5f9;border-radius:10px;padding:4px;margin-bottom:20px;">
+        <button onclick="switchTab('link')" id="tab-link" style="flex:1;padding:7px;border:none;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;background:white;color:#0f172a;box-shadow:0 1px 3px rgba(0,0,0,0.1);">🔗 Link diretto</button>
+        <button onclick="switchTab('widget')" id="tab-widget" style="flex:1;padding:7px;border:none;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;background:transparent;color:#64748b;">📦 Widget embed</button>
+        <button onclick="switchTab('qr')" id="tab-qr" style="flex:1;padding:7px;border:none;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;background:transparent;color:#64748b;">📱 QR Code</button>
+      </div>
+
+      <!-- TAB: LINK DIRETTO -->
+      <div id="panel-link">
+        <p style="font-size:13px;color:#64748b;margin-bottom:12px;" id="embed-desc">Condividi questo link con i tuoi partecipanti — via email, WhatsApp, social o stampalo sulla locandina.</p>
+        <div style="background:#f8fafc;border:1.5px solid #e2e8f0;border-radius:10px;padding:12px 14px;font-family:monospace;font-size:12px;color:#374151;word-break:break-all;margin-bottom:12px;" id="direct-link-display"></div>
+        <div style="display:flex;gap:8px;">
+          <button class="modal-btn-primary" style="flex:1;padding:10px;" onclick="copyDirectLink()">📋 Copia link</button>
+          <a id="preview-link-btn" href="#" target="_blank" class="modal-btn-secondary" style="flex:1;padding:10px;text-align:center;display:block;text-decoration:none;">👁️ Apri anteprima</a>
         </div>
       </div>
-      <div class="modal-actions" style="margin-top:12px;">
-        <button class="modal-btn-secondary" onclick="document.getElementById('embed-modal').style.display='none'">Chiudi</button>
+
+      <!-- TAB: WIDGET EMBED -->
+      <div id="panel-widget" style="display:none;">
+        <div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:10px;padding:12px 14px;margin-bottom:14px;">
+          <p style="font-size:13px;font-weight:700;color:#1e40af;margin-bottom:4px;">Come funziona il widget</p>
+          <p style="font-size:12px;color:#3b82f6;line-height:1.6;">Il widget aggiunge una <strong>bolla flottante</strong> al tuo sito. Quando i visitatori la cliccano, si apre la chat direttamente nella pagina — senza uscire dal tuo sito.</p>
+        </div>
+        <p style="font-size:12px;font-weight:600;color:#374151;margin-bottom:6px;">1. Copia questo codice:</p>
+        <textarea id="embed-code" readonly style="margin-bottom:12px;font-size:11px;"></textarea>
+        <p style="font-size:12px;font-weight:600;color:#374151;margin-bottom:6px;">2. Incollalo nel tuo sito prima del tag <code style="background:#f1f5f9;padding:1px 5px;border-radius:4px;">&lt;/body&gt;</code>:</p>
+        <div style="background:#0f172a;border-radius:10px;padding:12px 14px;font-family:monospace;font-size:11px;color:#94a3b8;margin-bottom:14px;line-height:1.8;">
+          <span style="color:#64748b;">...</span><br>
+          <span style="color:#ef4444;">&lt;script&gt;</span><span style="color:#94a3b8;">il tuo codice esistente</span><span style="color:#ef4444;">&lt;/script&gt;</span><br>
+          <span style="color:#4ade80;">👉 &lt;!-- INCOLLA QUI IL CODICE REPLIQ --&gt;</span><br>
+          <span style="color:#ef4444;">&lt;/body&gt;</span><br>
+          <span style="color:#ef4444;">&lt;/html&gt;</span>
+        </div>
+        <div style="display:flex;gap:8px;">
+          <button class="modal-btn-primary" style="flex:1;padding:10px;" onclick="copyEmbed()">📋 Copia codice</button>
+          <a id="preview-widget-btn" href="#" target="_blank" class="modal-btn-secondary" style="flex:1;padding:10px;text-align:center;display:block;text-decoration:none;">👁️ Prova widget</a>
+        </div>
       </div>
+
+      <!-- TAB: QR CODE -->
+      <div id="panel-qr" style="display:none;text-align:center;">
+        <p style="font-size:13px;color:#64748b;margin-bottom:16px;">Stampa il QR code sulla mappa della gara, locandine, pettorale o banner — i partecipanti lo scansionano e accedono subito al chatbot.</p>
+        <img id="embed-qr" src="" alt="QR Code" style="width:180px;height:180px;border-radius:12px;border:1px solid #e5e7eb;margin-bottom:12px;">
+        <p style="font-size:12px;color:#94a3b8;margin-bottom:16px;">Risoluzione 180×180px — stampabile fino a 5×5 cm</p>
+        <div style="display:flex;gap:8px;justify-content:center;">
+          <a id="qr-download" href="#" download="qr-chatbot.png" class="modal-btn-primary" style="padding:10px 20px;text-decoration:none;">⬇️ Scarica QR</a>
+        </div>
+      </div>
+
     </div>
   </div>
 
@@ -1206,31 +1243,58 @@
       if (pendingForm) pendingForm.submit();
     });
 
+    function switchTab(tab) {
+      ["link","widget","qr"].forEach(t => {
+        document.getElementById("panel-"+t).style.display = t === tab ? "block" : "none";
+        const btn = document.getElementById("tab-"+t);
+        if (t === tab) { btn.style.background="white"; btn.style.color="#0f172a"; btn.style.boxShadow="0 1px 3px rgba(0,0,0,0.1)"; }
+        else { btn.style.background="transparent"; btn.style.color="#64748b"; btn.style.boxShadow="none"; }
+      });
+    }
+
     function showEmbed(raceId, raceName) {
       const base = window.location.origin;
-      const chatUrl = `${base}/widget/${raceId}`;
-      const code = `<iframe src="${chatUrl}" style="position:fixed;bottom:0;right:0;width:400px;height:600px;border:none;z-index:9999;" allow="clipboard-write"></iframe>`;
-      currentEmbedUrl = `${base}/chat/${raceId}`;
+      const widgetUrl = `${base}/widget/${raceId}`;
+      const chatUrl = `${base}/chat/${raceId}`;
+      currentEmbedUrl = chatUrl;
+      const code = `<!-- Repliq Chatbot — ${raceName} -->\n<iframe src="${widgetUrl}" style="position:fixed;bottom:0;right:0;width:420px;height:620px;border:none;z-index:9999;border-radius:20px 0 0 0;" title="Assistente virtuale ${raceName}"></iframe>`;
       document.getElementById("embed-code").value = code;
-      document.getElementById("embed-desc").textContent = `Chatbot "${raceName}" — incolla prima del tag </body>:`;
-      document.getElementById("embed-qr").src = `https://api.qrserver.com/v1/create-qr-code/?size=120x120&data=${encodeURIComponent(currentEmbedUrl)}`;
+      document.getElementById("embed-desc").textContent = `Chatbot "${raceName}" — condividi questo link diretto`;
+      document.getElementById("direct-link-display").textContent = chatUrl;
+      document.getElementById("preview-link-btn").href = chatUrl;
+      document.getElementById("preview-widget-btn").href = widgetUrl;
+      const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=360x360&data=${encodeURIComponent(chatUrl)}`;
+      document.getElementById("embed-qr").src = qrUrl;
+      document.getElementById("qr-download").href = qrUrl;
+      switchTab("link");
       document.getElementById("embed-modal").style.display = "flex";
     }
+
     function showEventEmbed(eventId, eventName) {
       const base = window.location.origin;
-      currentEmbedUrl = `${base}/chat/event/${eventId}`;
-      const code = `<iframe src="${currentEmbedUrl}" style="position:fixed;bottom:0;right:0;width:400px;height:600px;border:none;z-index:9999;" allow="clipboard-write"></iframe>`;
+      const chatUrl = `${base}/chat/event/${eventId}`;
+      const widgetUrl = `${base}/widget/${eventId}`;
+      currentEmbedUrl = chatUrl;
+      const code = `<!-- Repliq Chatbot — ${eventName} -->\n<iframe src="${chatUrl}" style="position:fixed;bottom:0;right:0;width:420px;height:620px;border:none;z-index:9999;border-radius:20px 0 0 0;" title="Assistente virtuale ${eventName}"></iframe>`;
       document.getElementById("embed-code").value = code;
-      document.getElementById("embed-desc").textContent = `Chatbot evento "${eventName}" — incolla prima del tag </body>:`;
-      document.getElementById("embed-qr").src = `https://api.qrserver.com/v1/create-qr-code/?size=120x120&data=${encodeURIComponent(currentEmbedUrl)}`;
+      document.getElementById("embed-desc").textContent = `Chatbot evento "${eventName}" — condividi questo link diretto`;
+      document.getElementById("direct-link-display").textContent = chatUrl;
+      document.getElementById("preview-link-btn").href = chatUrl;
+      document.getElementById("preview-widget-btn").href = chatUrl;
+      const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=360x360&data=${encodeURIComponent(chatUrl)}`;
+      document.getElementById("embed-qr").src = qrUrl;
+      document.getElementById("qr-download").href = qrUrl;
+      switchTab("link");
       document.getElementById("embed-modal").style.display = "flex";
     }
+
     function copyEmbed() {
       const ta = document.getElementById("embed-code");
       ta.select();
       document.execCommand("copy");
-      alert("Codice iframe copiato!");
+      alert("Codice copiato! Incollalo prima del tag </body> nel tuo sito.");
     }
+
     function copyDirectLink() {
       if (currentEmbedUrl) {
         navigator.clipboard.writeText(currentEmbedUrl).then(() => alert("Link copiato!"));

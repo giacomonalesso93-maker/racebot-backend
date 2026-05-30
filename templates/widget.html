@@ -2,195 +2,249 @@
 <html lang="it">
 <head>
   <meta charset="UTF-8">
-  <title>RaceBot Widget — {{ race.name }}</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Repliq Widget — {{ race.name }}</title>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
-    body { font-family: system-ui, sans-serif; background: transparent; }
+    body { font-family: system-ui, -apple-system, sans-serif; background: transparent; }
 
-    #racebot-bubble {
-      position: fixed;
-      bottom: 24px;
-      right: 24px;
-      width: 56px;
-      height: 56px;
-      background: #2563eb;
-      border-radius: 50%;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      cursor: pointer;
-      box-shadow: 0 4px 16px rgba(37,99,235,0.4);
-      font-size: 26px;
-      z-index: 9999;
-      transition: transform 0.2s;
+    /* BUBBLE */
+    #rb-bubble {
+      position: fixed; bottom: 24px; right: 24px;
+      width: 58px; height: 58px;
+      background: linear-gradient(135deg, {{ race.chatbot_color or '#2563eb' }}, {{ race.chatbot_color or '#1d4ed8' }});
+      border-radius: 50%; display: flex; align-items: center; justify-content: center;
+      cursor: pointer; z-index: 9999;
+      box-shadow: 0 6px 24px rgba(37,99,235,0.45);
+      transition: transform 0.2s, box-shadow 0.2s;
+      font-size: 24px;
     }
-    #racebot-bubble:hover { transform: scale(1.1); }
+    #rb-bubble:hover { transform: scale(1.08); box-shadow: 0 10px 32px rgba(37,99,235,0.55); }
+    #rb-bubble.open { transform: scale(0.92); }
+    .rb-bubble-icon { transition: transform 0.2s; }
+    #rb-bubble.open .rb-bubble-icon { transform: rotate(90deg); }
 
-    #racebot-window {
-      display: none;
-      position: fixed;
-      bottom: 92px;
-      right: 24px;
-      width: 360px;
-      height: 500px;
-      background: white;
-      border-radius: 16px;
-      box-shadow: 0 8px 40px rgba(0,0,0,0.18);
-      flex-direction: column;
-      overflow: hidden;
-      z-index: 9999;
+    /* WINDOW */
+    #rb-window {
+      position: fixed; bottom: 96px; right: 24px;
+      width: 360px; height: 520px;
+      background: white; border-radius: 20px;
+      box-shadow: 0 16px 60px rgba(0,0,0,0.18);
+      display: flex; flex-direction: column; overflow: hidden;
+      z-index: 9998;
+      transform: scale(0.85) translateY(20px); opacity: 0;
+      pointer-events: none;
+      transition: transform 0.25s cubic-bezier(0.34,1.56,0.64,1), opacity 0.2s;
+      transform-origin: bottom right;
     }
-    #racebot-window.open { display: flex; }
+    #rb-window.open { transform: scale(1) translateY(0); opacity: 1; pointer-events: all; }
 
+    /* HEADER */
     .rb-header {
-      background: #2563eb;
-      color: white;
-      padding: 14px 18px;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
+      background: linear-gradient(135deg, #1e3a8a, {{ race.chatbot_color or '#2563eb' }});
+      padding: 14px 16px; display: flex; align-items: center; justify-content: space-between;
+      flex-shrink: 0;
     }
-    .rb-header h3 { font-size: 15px; font-weight: 700; }
-    .rb-header p { font-size: 12px; opacity: 0.8; }
-    .rb-close { background: none; border: none; color: white; font-size: 20px; cursor: pointer; }
+    .rb-header-left { display: flex; align-items: center; gap: 10px; }
+    .rb-avatar {
+      width: 36px; height: 36px; border-radius: 10px;
+      background: rgba(255,255,255,0.15); border: 1.5px solid rgba(255,255,255,0.25);
+      display: flex; align-items: center; justify-content: center; font-size: 18px;
+    }
+    {% if race.chatbot_logo_url %}
+    .rb-avatar img { width: 30px; height: 30px; object-fit: contain; border-radius: 6px; }
+    {% endif %}
+    .rb-title { font-size: 14px; font-weight: 800; color: white; line-height: 1.2; }
+    .rb-subtitle { font-size: 10px; color: rgba(255,255,255,0.65); margin-top: 1px; display: flex; align-items: center; gap: 4px; }
+    .rb-dot { width: 5px; height: 5px; background: #4ade80; border-radius: 50%; box-shadow: 0 0 5px rgba(74,222,128,0.6); }
+    .rb-brand { font-size: 10px; font-weight: 900; color: rgba(255,255,255,0.4); letter-spacing: 1px; text-transform: uppercase; }
+    .rb-close { background: rgba(255,255,255,0.12); border: none; color: white; width: 28px; height: 28px; border-radius: 8px; cursor: pointer; font-size: 14px; display: flex; align-items: center; justify-content: center; transition: background 0.15s; }
+    .rb-close:hover { background: rgba(255,255,255,0.22); }
 
+    /* MESSAGES */
     .rb-messages {
-      flex: 1;
-      overflow-y: auto;
-      padding: 16px;
-      display: flex;
-      flex-direction: column;
-      gap: 10px;
-      background: #f8fafc;
+      flex: 1; overflow-y: auto; padding: 14px; display: flex;
+      flex-direction: column; gap: 12px; background: #f8fafc;
     }
-    .rb-msg {
-      max-width: 85%;
-      padding: 10px 14px;
-      border-radius: 12px;
-      font-size: 14px;
-      line-height: 1.5;
-    }
-    .rb-msg.bot {
-      background: white;
-      color: #111827;
-      box-shadow: 0 1px 4px rgba(0,0,0,0.07);
-      align-self: flex-start;
-      border-bottom-left-radius: 3px;
-    }
-    .rb-msg.user {
-      background: #2563eb;
-      color: white;
-      align-self: flex-end;
-      border-bottom-right-radius: 3px;
-    }
+    .rb-messages::-webkit-scrollbar { width: 3px; }
+    .rb-messages::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 2px; }
+    .rb-row { display: flex; align-items: flex-end; gap: 7px; }
+    .rb-row.user { flex-direction: row-reverse; }
+    .rb-av { width: 26px; height: 26px; border-radius: 8px; background: linear-gradient(135deg,{{ race.chatbot_color or '#2563eb' }},#1d4ed8); display: flex; align-items: center; justify-content: center; font-size: 13px; flex-shrink: 0; }
+    .rb-msg { max-width: 80%; padding: 9px 13px; font-size: 13px; line-height: 1.6; border-radius: 16px; word-wrap: break-word; }
+    .rb-msg.bot { background: white; color: #1e293b; border: 1px solid #e2e8f0; border-bottom-left-radius: 3px; box-shadow: 0 1px 4px rgba(0,0,0,0.05); }
+    .rb-msg.bot strong { color: {{ race.chatbot_color or '#2563eb' }}; }
+    .rb-msg.bot a { color: {{ race.chatbot_color or '#2563eb' }}; text-decoration: underline; }
+    .rb-msg.user { background: linear-gradient(135deg,{{ race.chatbot_color or '#2563eb' }},#1d4ed8); color: white; border-bottom-right-radius: 3px; }
+    .rb-msg.streaming::after { content:"▋"; display:inline; animation:blink 0.7s step-end infinite; color:{{ race.chatbot_color or '#2563eb' }}; margin-left:2px; font-size:11px; }
+    @keyframes blink { 0%,100%{opacity:1;} 50%{opacity:0;} }
+    .typing-dots { display:flex; align-items:center; gap:4px; padding:10px 14px; }
+    .typing-dots span { width:6px; height:6px; background:#94a3b8; border-radius:50%; animation:bounce 1.2s infinite; }
+    .typing-dots span:nth-child(2){animation-delay:0.2s;} .typing-dots span:nth-child(3){animation-delay:0.4s;}
+    @keyframes bounce{0%,60%,100%{transform:translateY(0);opacity:.4;}30%{transform:translateY(-6px);opacity:1;}}
 
-    .rb-input {
-      padding: 12px 14px;
-      display: flex;
-      gap: 8px;
-      border-top: 1px solid #e5e7eb;
-      background: white;
+    /* QUICK REPLIES */
+    .rb-quick { display:flex; flex-wrap:wrap; gap:6px; padding:2px 0 4px 33px; }
+    .rb-quick-btn { font-size:11px; padding:4px 10px; border-radius:20px; background:#eff6ff; border:1px solid #bfdbfe; color:#1d4ed8; cursor:pointer; white-space:nowrap; transition:all 0.15s; }
+    .rb-quick-btn:hover { background:{{ race.chatbot_color or '#2563eb' }}; color:white; border-color:{{ race.chatbot_color or '#2563eb' }}; }
+
+    /* INPUT */
+    .rb-input-area {
+      padding: 10px 12px 12px; display: flex; gap: 8px; align-items: center;
+      border-top: 1px solid #e2e8f0; background: white; flex-shrink: 0;
     }
-    .rb-input input {
-      flex: 1;
-      padding: 8px 14px;
-      border: 1px solid #d1d5db;
-      border-radius: 20px;
-      font-size: 14px;
-      outline: none;
+    .rb-input-wrap { flex:1; display:flex; align-items:center; background:#f8fafc; border:1.5px solid #e2e8f0; border-radius:20px; padding:0 12px; transition:border-color 0.2s; }
+    .rb-input-wrap:focus-within { border-color:{{ race.chatbot_color or '#2563eb' }}; background:white; }
+    .rb-input-wrap input { flex:1; padding:9px 0; border:none; background:transparent; font-size:13px; outline:none; color:#0f172a; }
+    .rb-input-wrap input::placeholder { color:#94a3b8; }
+    .rb-send { width:36px; height:36px; border-radius:10px; background:{{ race.chatbot_color or '#2563eb' }}; border:none; color:white; font-size:16px; cursor:pointer; display:flex; align-items:center; justify-content:center; transition:opacity 0.15s; flex-shrink:0; }
+    .rb-send:hover { opacity:0.85; }
+    .rb-send:disabled { opacity:0.4; cursor:not-allowed; }
+    .rb-powered { text-align:center; font-size:10px; color:#94a3b8; padding-bottom:4px; background:white; }
+    .rb-powered a { color:{{ race.chatbot_color or '#2563eb' }}; text-decoration:none; font-weight:700; }
+
+    @media (max-width:440px) {
+      #rb-window { right:12px; bottom:88px; width:calc(100vw - 24px); }
+      #rb-bubble { right:12px; bottom:12px; }
     }
-    .rb-input input:focus { border-color: #2563eb; }
-    .rb-input button {
-      padding: 8px 16px;
-      background: #2563eb;
-      color: white;
-      border: none;
-      border-radius: 20px;
-      font-size: 14px;
-      cursor: pointer;
-    }
-    .rb-powered {
-      text-align: center;
-      font-size: 11px;
-      color: #9ca3af;
-      padding: 6px;
-      background: white;
-    }
-    .rb-powered a { color: #9ca3af; text-decoration: none; }
   </style>
 </head>
 <body>
 
-  <div id="racebot-bubble" onclick="rbToggle()">🏃</div>
+  <div id="rb-bubble" onclick="rbToggle()">
+    <span class="rb-bubble-icon">💬</span>
+  </div>
 
-  <div id="racebot-window">
+  <div id="rb-window">
     <div class="rb-header">
-      <div>
-        <h3>{{ race.name }}</h3>
-        <p>Assistente virtuale della gara</p>
+      <div class="rb-header-left">
+        <div class="rb-avatar">
+          {% if race.chatbot_logo_url %}<img src="{{ race.chatbot_logo_url }}" alt="logo">{% else %}{{ race.sport_type_emoji or '🏃' }}{% endif %}
+        </div>
+        <div>
+          <div class="rb-title">{{ race.chatbot_name or race.name }}</div>
+          <div class="rb-subtitle"><span class="rb-dot"></span> Assistente attivo</div>
+        </div>
       </div>
-      <button class="rb-close" onclick="rbToggle()">✕</button>
+      <div style="display:flex;align-items:center;gap:8px;">
+        <span class="rb-brand">Repliq</span>
+        <button class="rb-close" onclick="rbToggle()">✕</button>
+      </div>
     </div>
 
     <div class="rb-messages" id="rb-messages">
-      <div class="rb-msg bot">Ciao! 👋 Sono l'assistente di <strong>{{ race.name }}</strong>. Come posso aiutarti?</div>
+      <div class="rb-row">
+        <div class="rb-av">{{ race.sport_type_emoji or '🏃' }}</div>
+        <div class="rb-msg bot">{{ (race.welcome_message or "Ciao! 👋 Sono l'assistente di <strong>" + race.name + "</strong>. Come posso aiutarti?") | safe }}</div>
+      </div>
     </div>
 
-    <div class="rb-input">
-      <input type="text" id="rb-question" placeholder="Scrivi una domanda..." autocomplete="off">
-      <button onclick="rbSend()">➤</button>
+    <div class="rb-quick" id="rb-quick">
+      <button class="rb-quick-btn" onclick="rbQuick(this,'Dove parcheggio?')">🅿️ Parcheggi?</button>
+      <button class="rb-quick-btn" onclick="rbQuick(this,'A che ora parte la gara?')">⏰ Orario?</button>
+      <button class="rb-quick-btn" onclick="rbQuick(this,'Materiale obbligatorio?')">🎒 Materiale?</button>
     </div>
-    <div class="rb-powered">Powered by <a href="https://racebot.it" target="_blank">RaceBot</a></div>
+
+    <div class="rb-input-area">
+      <div class="rb-input-wrap">
+        <input type="text" id="rb-input" placeholder="Scrivi una domanda..." autocomplete="off">
+      </div>
+      <button class="rb-send" id="rb-send" onclick="rbSend()">➤</button>
+    </div>
+    <div class="rb-powered">Powered by <a href="https://repliq.it" target="_blank">Repliq</a></div>
   </div>
 
   <script>
     const RACE_ID = "{{ race.id }}";
-    const API_BASE = window.location.origin;
+    const msgs = document.getElementById("rb-messages");
+    const input = document.getElementById("rb-input");
+    const sendBtn = document.getElementById("rb-send");
+    let history = [];
 
     function rbToggle() {
-      const win = document.getElementById("racebot-window");
-      win.classList.toggle("open");
-      if (win.classList.contains("open")) {
-        document.getElementById("rb-question").focus();
-      }
+      document.getElementById("rb-bubble").classList.toggle("open");
+      document.getElementById("rb-window").classList.toggle("open");
+      if (document.getElementById("rb-window").classList.contains("open")) input.focus();
     }
 
-    document.getElementById("rb-question").addEventListener("keydown", e => {
-      if (e.key === "Enter") rbSend();
-    });
+    function rbQuick(btn, q) {
+      document.getElementById("rb-quick").remove();
+      input.value = q;
+      rbSend();
+    }
 
-    function rbAdd(text, type) {
-      const msgs = document.getElementById("rb-messages");
+    input.addEventListener("keydown", e => { if (e.key === "Enter") rbSend(); });
+
+    function rbFmt(text) {
+      return text
+        .replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;")
+        .replace(/\n/g,"<br>")
+        .replace(/\*\*(.*?)\*\*/g,"<strong>$1</strong>")
+        .replace(/(https?:\/\/[^\s<&]+)/g,'<a href="$1" target="_blank">🗺️ Mappa</a>');
+    }
+
+    function rbAddRow(text, type) {
+      const row = document.createElement("div");
+      row.className = "rb-row" + (type === "user" ? " user" : "");
+      if (type !== "user") {
+        const av = document.createElement("div");
+        av.className = "rb-av";
+        av.textContent = "{{ race.sport_type_emoji or '🏃' }}";
+        row.appendChild(av);
+      }
       const div = document.createElement("div");
-      div.className = `rb-msg ${type}`;
-      div.innerHTML = text.replace(/\n/g, "<br>").replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>");
-      msgs.appendChild(div);
+      div.className = "rb-msg " + (type === "user" ? "user" : type === "stream" ? "bot streaming" : "bot");
+      if (type === "typing") {
+        div.innerHTML = '<div class="typing-dots"><span></span><span></span><span></span></div>';
+      } else {
+        div.innerHTML = rbFmt(text);
+      }
+      row.appendChild(div);
+      msgs.appendChild(row);
       msgs.scrollTop = msgs.scrollHeight;
       return div;
     }
 
     async function rbSend() {
-      const input = document.getElementById("rb-question");
-      const question = input.value.trim();
-      if (!question) return;
+      const q = input.value.trim();
+      if (!q) return;
       input.value = "";
-
-      rbAdd(question, "user");
-      const typing = rbAdd("...", "bot");
-
+      sendBtn.disabled = true;
+      rbAddRow(q, "user");
+      history.push({ role:"user", content:q });
+      const botDiv = rbAddRow("", "stream");
+      let fullText = "";
       try {
-        const form = new FormData();
-        form.append("question", question);
-        const res = await fetch(`${API_BASE}/api/ask/${RACE_ID}`, { method: "POST", body: form });
-        const data = await res.json();
-        typing.remove();
-        rbAdd(res.ok ? data.risposta : "Mi dispiace, non ho trovato informazioni. Contatta la segreteria.", "bot");
-      } catch {
-        typing.remove();
-        rbAdd("Errore di connessione. Riprova.", "bot");
-      }
+        const fd = new FormData();
+        fd.append("question", q);
+        fd.append("history", JSON.stringify(history.slice(0,-1)));
+        const resp = await fetch("/api/ask/" + RACE_ID, { method:"POST", body:fd });
+        if (!resp.ok) { botDiv.className="rb-msg bot"; botDiv.innerHTML=rbFmt("Errore. Riprova."); return; }
+        const reader = resp.body.getReader();
+        const dec = new TextDecoder();
+        let buf = "";
+        while (true) {
+          const {done, value} = await reader.read();
+          if (done) break;
+          buf += dec.decode(value, {stream:true});
+          const parts = buf.split("\n\n");
+          buf = parts.pop();
+          for (const part of parts) {
+            if (!part.startsWith("data: ")) continue;
+            const data = part.slice(6);
+            if (data === "[DONE]") { botDiv.classList.remove("streaming"); continue; }
+            if (data.startsWith("[META]")) { try { const m=JSON.parse(data.slice(6)); history.push({role:"assistant",content:fullText}); } catch(e){} continue; }
+            if (data.startsWith("[ERROR]")) { botDiv.classList.remove("streaming"); botDiv.innerHTML=rbFmt("Errore: "+data.slice(7)); continue; }
+            fullText += data.replace(/\\n/g,"\n");
+            botDiv.innerHTML = rbFmt(fullText);
+            msgs.scrollTop = msgs.scrollHeight;
+          }
+        }
+      } catch(e) {
+        botDiv.classList.remove("streaming");
+        botDiv.innerHTML = rbFmt("Errore di connessione. Riprova.");
+      } finally { sendBtn.disabled = false; input.focus(); }
     }
   </script>
-
 </body>
 </html>
