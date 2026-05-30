@@ -219,28 +219,28 @@
       userRow.className = "msg-row user-row";
       var userMsg = document.createElement("div");
       userMsg.className = "msg user";
-      userMsg.innerHTML = "Sono iscritto alla <strong>" + raceName + "</strong>";
+      userMsg.textContent = "Sono iscritto alla " + raceName;
       userRow.appendChild(userMsg);
       messagesEl.appendChild(userRow);
 
       fetch("/api/races/" + raceId + "/info")
         .then(function(r) { return r.json(); })
         .then(function(info) {
-          var welcome = "Perfetto! 🎽 Sono l'assistente della <strong>" + raceName + "</strong>.";
+          var welcome = "Perfetto! 🎽 Sono l'assistente della **" + raceName + "**.";
           if (info.date || info.start_time || info.location || info.length_km) {
-            welcome += "<br><br>📋 <strong>Info gara:</strong>";
-            if (info.date) welcome += "<br>📅 Data: " + info.date;
-            if (info.start_time) welcome += "<br>⏰ Partenza: " + info.start_time;
-            if (info.location) welcome += "<br>📍 Luogo: " + info.location;
-            if (info.length_km) welcome += "<br>📏 Distanza: " + info.length_km + " km";
-            if (info.elevation_gain) welcome += "<br>⛰️ Dislivello: " + info.elevation_gain;
+            welcome += "\n\n📋 **Info gara:**";
+            if (info.date) welcome += "\n📅 Data: " + info.date;
+            if (info.start_time) welcome += "\n⏰ Partenza: " + info.start_time;
+            if (info.location) welcome += "\n📍 Luogo: " + info.location;
+            if (info.length_km) welcome += "\n📏 Distanza: " + info.length_km + " km";
+            if (info.elevation_gain) welcome += "\n⛰️ Dislivello: " + info.elevation_gain;
           }
-          welcome += "<br><br>Posso aiutarti con regolamento, logistica, parcheggi, ristori e molto altro.";
+          welcome += "\n\nPosso aiutarti con regolamento, logistica, parcheggi, ristori e molto altro.";
           addMessage(welcome, "bot");
           showQuickReplies();
         })
         .catch(function() {
-          addMessage("Perfetto! 🎽 Sono l'assistente della <strong>" + raceName + "</strong>. Come posso aiutarti?", "bot");
+          addMessage("Perfetto! 🎽 Sono l'assistente della **" + raceName + "**. Come posso aiutarti?", "bot");
           showQuickReplies();
         });
 
