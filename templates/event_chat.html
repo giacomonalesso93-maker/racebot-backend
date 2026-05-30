@@ -8,7 +8,11 @@
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
-    body { font-family: system-ui, -apple-system, sans-serif; background: #f8fafc; display: flex; flex-direction: column; height: 100vh; overflow: hidden; }
+    html { height: 100%; height: -webkit-fill-available; }
+    body { font-family: system-ui, -apple-system, sans-serif; background: #f8fafc; display: flex; flex-direction: column; height: 100vh; height: 100dvh; min-height: -webkit-fill-available; overflow: hidden; }
+    header { flex-shrink: 0; position: sticky; top: 0; z-index: 10; }
+    .input-area { flex-shrink: 0; position: sticky; bottom: 0; z-index: 10; }
+    .powered-by { flex-shrink: 0; background: white; }
 
     /* ── HEADER ── */
     header {
