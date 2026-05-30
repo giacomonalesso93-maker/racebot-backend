@@ -240,9 +240,21 @@
     .modal-sheet .modal-actions button:hover { opacity: 0.88; }
 
     @media (max-width: 480px) {
-      .msg { max-width: 88%; font-size: 13px; }
-      .header-right { gap: 6px; }
+      header { height: auto; min-height: 60px; padding: 10px 14px; }
+      .header-avatar { width: 36px; height: 36px; font-size: 17px; }
+      .header-info h1 { font-size: 13px; }
+      .header-info .subtitle { font-size: 10px; }
+      .header-right { gap: 4px; }
       .header-brand { display: none; }
+      .header-btn { padding: 5px 10px; font-size: 11px; }
+      .msg { max-width: 88%; font-size: 13px; padding: 9px 13px; }
+      .msg-avatar { width: 28px; height: 28px; font-size: 13px; border-radius: 8px; }
+      .messages { padding: 12px 10px; gap: 12px; }
+      .input-area { padding: 8px 10px 12px; gap: 8px; }
+      .send-btn { width: 38px; height: 38px; font-size: 16px; border-radius: 10px; }
+      .quick-replies { padding: 2px 0 4px 36px; gap: 6px; }
+      .quick-reply-btn { font-size: 12px; padding: 5px 10px; }
+      .powered-by { font-size: 10px; }
     }
   </style>
 </head>
@@ -282,7 +294,7 @@
   <div class="messages" id="messages">
     <div class="msg-row">
       <div class="msg-avatar">{{ race.sport_type_emoji or "🏃" }}</div>
-      <div class="msg bot">{{ race.welcome_message or "Ciao! 👋 Sono l'assistente virtuale di <strong>" + race.name + "</strong>.<br>Posso aiutarti con regolamento, logistica, parcheggi, ristori e molto altro." }}</div>
+      <div class="msg bot">{{ (race.welcome_message or "Ciao! 👋 Sono l'assistente virtuale di <strong>" + race.name + "</strong>.<br>Posso aiutarti con regolamento, logistica, parcheggi, ristori e molto altro.") | safe }}</div>
     </div>
     <div class="quick-replies" id="quick-replies-welcome">
       <button class="quick-reply-btn" onclick="quickAsk(this, 'Dove parcheggio?')">🅿️ Dove parcheggio?</button>
