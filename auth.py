@@ -39,21 +39,31 @@ def register_organizer(email: str, password: str, name: str) -> dict | None:
         "id": organizer_id,
         "email": email,
         "password_hash": hash_password(password),
-        "name": name
+        "name": name,
+        "status": "pending"
     }).execute()
     if result.data:
         return result.data[0]
     return None
 
 
-def login_organizer(email: str, password: str) -> str | None:
+def login_organizer(email: str, password: str) -> tuple[str | None, str | None]:
+    """
+    Restituisce (token, errore).
+    errore può essere: None (ok), 'wrong_credentials', 'pending', 'suspended'
+    """
     result = supabase.table("organizers").select("*").eq("email", email).execute()
     if not result.data:
-        return None
+        return None, "wrong_credentials"
     organizer = result.data[0]
     if not verify_password(password, organizer["password_hash"]):
-        return None
-    return create_session_token(organizer["id"])
+        return None, "wrong_credentials"
+    status = organizer.get("status", "active")
+    if status == "pending":
+        return None, "pending"
+    if status == "suspended":
+        return None, "suspended"
+    return create_session_token(organizer["id"]), None
 
 
 def get_current_organizer(token: str) -> dict | None:
@@ -62,5 +72,8 @@ def get_current_organizer(token: str) -> dict | None:
         return None
     result = supabase.table("organizers").select("*").eq("id", organizer_id).execute()
     if result.data:
-        return result.data[0]
+        org = result.data[0]
+        if org.get("status") in ("pending", "suspended"):
+            return None
+        return org
     return None

@@ -161,22 +161,28 @@ def health():
 # ─── AUTH ────────────────────────────────────────────────────
 
 @app.post("/api/register")
-def api_register(email: str = Form(...), password: str = Form(...), name: str = Form(...)):
+def api_register(request: Request, email: str = Form(...), password: str = Form(...), name: str = Form(...)):
     try:
+        existing = supabase.table("organizers").select("id").eq("email", email).execute()
+        if existing.data:
+            return templates.TemplateResponse(request=request, name="register.html", context={"error": "Email già registrata. Prova ad accedere."})
         organizer = register_organizer(email, password, name)
         if not organizer:
-            raise HTTPException(status_code=400, detail="Errore durante la registrazione")
-        response = RedirectResponse(url="/login", status_code=303)
-        return response
+            return templates.TemplateResponse(request=request, name="register.html", context={"error": "Errore durante la registrazione. Riprova."})
+        return templates.TemplateResponse(request=request, name="register.html", context={"success": True})
     except Exception as e:
-        raise HTTPException(status_code=400, detail="Email già registrata")
+        return templates.TemplateResponse(request=request, name="register.html", context={"error": "Errore durante la registrazione. Riprova."})
 
 
 @app.post("/api/login")
-def api_login(email: str = Form(...), password: str = Form(...)):
-    token = login_organizer(email, password)
-    if not token:
-        raise HTTPException(status_code=401, detail="Credenziali non valide")
+def api_login(request: Request, email: str = Form(...), password: str = Form(...)):
+    token, error = login_organizer(email, password)
+    if error == "wrong_credentials":
+        return templates.TemplateResponse(request=request, name="login.html", context={"error": "Email o password non corretti."})
+    if error == "pending":
+        return templates.TemplateResponse(request=request, name="login.html", context={"error": "Il tuo account è in attesa di approvazione. Riceverai una email quando sarà attivato.", "pending": True})
+    if error == "suspended":
+        return templates.TemplateResponse(request=request, name="login.html", context={"error": "Il tuo account è stato sospeso. Contatta il supporto."})
     response = RedirectResponse(url="/dashboard", status_code=303)
     response.set_cookie(key="session", value=token, httponly=True)
     return response
@@ -1462,7 +1468,9 @@ def admin_dashboard(request: Request, admin_session: str = Cookie(default=None))
     if not _admin_token_valid(admin_session):
         return RedirectResponse(url="/admin/login", status_code=303)
 
-    organizers = supabase.table("organizers").select("*").execute().data or []
+    organizers_all = supabase.table("organizers").select("*").execute().data or []
+    pending_organizers = [o for o in organizers_all if o.get("status") == "pending"]
+    organizers = [o for o in organizers_all if o.get("status") != "pending"]
     all_races = supabase.table("races").select("id, organizer_id").execute().data or []
     all_tickets = supabase.table("tickets").select("id, race_id").execute().data or []
     all_races_full = supabase.table("races").select("id, organizer_id").execute().data or []
@@ -1495,6 +1503,7 @@ def admin_dashboard(request: Request, admin_session: str = Cookie(default=None))
     from datetime import datetime
     return templates.TemplateResponse(request=request, name="admin.html", context={
         "organizers": organizers,
+        "pending_organizers": pending_organizers,
         "aggregate": aggregate,
         "plan_options": PLAN_ORDER,
         "plan_labels": PLAN_LABELS,
@@ -1520,3 +1529,29 @@ def admin_update_organizer(
         "admin_notes": admin_notes or None,
     }).eq("id", organizer_id).execute()
     return RedirectResponse(url="/admin?ok=Organizzatore+aggiornato", status_code=303)
+
+
+@app.post("/admin/organizers/{organizer_id}/approve")
+def admin_approve_organizer(
+    organizer_id: str,
+    plan: str = Form("single"),
+    admin_session: str = Cookie(default=None),
+):
+    if not _admin_token_valid(admin_session):
+        raise HTTPException(status_code=403, detail="Non autorizzato")
+    supabase.table("organizers").update({
+        "status": "active",
+        "plan": plan if plan in PLAN_ORDER else "single",
+    }).eq("id", organizer_id).execute()
+    return RedirectResponse(url="/admin?ok=Account+approvato", status_code=303)
+
+
+@app.post("/admin/organizers/{organizer_id}/reject")
+def admin_reject_organizer(
+    organizer_id: str,
+    admin_session: str = Cookie(default=None),
+):
+    if not _admin_token_valid(admin_session):
+        raise HTTPException(status_code=403, detail="Non autorizzato")
+    supabase.table("organizers").update({"status": "suspended"}).eq("id", organizer_id).execute()
+    return RedirectResponse(url="/admin?ok=Account+rifiutato", status_code=303)

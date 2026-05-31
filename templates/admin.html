@@ -125,8 +125,52 @@
     </div>
   </div>
 
+  <!-- Richieste in attesa -->
+  {% if pending_organizers %}
+  <div class="section-title" style="color:#b45309;">
+    🕐 In attesa di approvazione ({{ pending_organizers|length }})
+  </div>
+  <div class="table-wrap" style="border:2px solid #fcd34d;margin-bottom:32px;">
+    <table>
+      <thead>
+        <tr>
+          <th>Nome</th>
+          <th>Email</th>
+          <th>Registrato</th>
+          <th>Piano da attivare</th>
+          <th>Azioni</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for org in pending_organizers %}
+        <tr style="background:#fffbeb;">
+          <td><strong>{{ org.name }}</strong></td>
+          <td style="color:#64748b;">{{ org.email }}</td>
+          <td style="color:#64748b;font-size:12px;">{{ org.created_at[:10] if org.created_at else '—' }}</td>
+          <td>
+            <form method="POST" action="/admin/organizers/{{ org.id }}/approve" style="display:inline-flex;gap:8px;align-items:center;">
+              <select name="plan" style="padding:5px 10px;border-radius:7px;border:1px solid #e2e8f0;font-size:13px;outline:none;">
+                {% for p in plan_options %}
+                <option value="{{ p }}">{{ plan_labels[p] }}</option>
+                {% endfor %}
+              </select>
+              <button type="submit" style="padding:6px 14px;background:#15803d;color:white;border:none;border-radius:7px;font-size:13px;font-weight:600;cursor:pointer;">✓ Approva</button>
+            </form>
+          </td>
+          <td>
+            <form method="POST" action="/admin/organizers/{{ org.id }}/reject" style="display:inline;">
+              <button type="submit" onclick="return confirm('Rifiutare la registrazione di {{ org.name }}?')" style="padding:6px 14px;background:#fee2e2;color:#b91c1c;border:none;border-radius:7px;font-size:13px;font-weight:600;cursor:pointer;">✗ Rifiuta</button>
+            </form>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% endif %}
+
   <!-- Lista organizzatori -->
-  <div class="section-title">👥 Organizzatori ({{ aggregate.total_organizers }})</div>
+  <div class="section-title">👥 Organizzatori attivi ({{ organizers|length }})</div>
   <div class="table-wrap">
     <table>
       <thead>
