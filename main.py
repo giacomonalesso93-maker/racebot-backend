@@ -498,6 +498,7 @@ async def upload_gpx(race_id: str, file: UploadFile = File(...), session: str = 
 
 @app.post("/api/ask/{race_id}")
 async def ask_question(
+    request: Request,
     race_id: str,
     question: str = Form(...),
     history: str = Form(default="[]"),
