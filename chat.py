@@ -32,6 +32,8 @@ def build_system_and_sections(context_chunks: list[str], race_name: str,
             race_info_lines.append(f"- Email segreteria: {race_info['secretary_email']}")
         if race_info.get("notes"):
             race_info_lines.append(f"- Note aggiuntive: {race_info['notes']}")
+        if race_info.get("gpx_download_url"):
+            race_info_lines.append(f"- Download tracciato GPX: {race_info['gpx_download_url']}")
 
     # Fetch meteo se disponibili data e location
     weather_context = ""
@@ -59,6 +61,8 @@ You have five information sources, in order of priority:
 5. Weather forecast for race day (use only if available and the user asks about weather)
 
 LOCATION RULE: When mentioning any location (parking, start, finish, refreshments, etc.) that has a "Link mappa" in the context, ALWAYS include the URL in your response on a new line, exactly as provided. Example: "Parcheggio P1 in Via Roma. 🗺️ https://maps.google.com/..."
+
+GPX RULE: If the user asks to download the GPX track, the route file, or the track for their GPS device/watch, ALWAYS include the download link from "Download tracciato GPX" in your response. Example: "Puoi scaricare il tracciato GPX qui: [URL]"
 
 If the answer is not in any source, say (in the user's language): "I don't have this information. I recommend contacting the race secretariat."
 Never invent information."""

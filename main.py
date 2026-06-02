@@ -560,6 +560,12 @@ async def ask_question(
         location_context = event_general_info + ("\n\n" + location_context if location_context else "")
 
     qa_context = get_qa_context(race_id)
+    # Aggiunge link download GPX se disponibile
+    gpx_download_url = ""
+    if race.get("gpx_data"):
+        base_url = str(request.base_url).rstrip("/")
+        gpx_download_url = f"{base_url}/p/{race_id}/download-gpx"
+
     race_info = {
         "date": race.get("date"),
         "location": race.get("location"),
@@ -568,6 +574,7 @@ async def ask_question(
         "start_time": race.get("start_time"),
         "secretary_email": race.get("secretary_email"),
         "notes": race.get("notes"),
+        "gpx_download_url": gpx_download_url,
     }
 
     # Parsing storico conversazione
@@ -1036,6 +1043,42 @@ def api_gpx_track(race_id: str):
     if not result.data:
         return []
     return result.data[0].get("gpx_data") or []
+
+
+@app.get("/p/{race_id}/download-gpx")
+def download_gpx(race_id: str):
+    """Endpoint pubblico per scaricare il file GPX della gara."""
+    result = supabase.table("races").select("name, gpx_data").eq("id", race_id).execute()
+    if not result.data:
+        raise HTTPException(status_code=404, detail="Gara non trovata")
+    race = result.data[0]
+    gpx_data = race.get("gpx_data")
+    if not gpx_data:
+        raise HTTPException(status_code=404, detail="Tracciato GPX non disponibile")
+
+    # Ricostruisce il file GPX dai punti salvati
+    race_name = race.get("name", "gara").replace(" ", "_")
+    gpx_content = f"""<?xml version="1.0" encoding="UTF-8"?>
+<gpx version="1.1" creator="Repliq" xmlns="http://www.topografix.com/GPX/1/1">
+  <trk>
+    <name>{race.get("name", "Percorso")}</name>
+    <trkseg>
+"""
+    for point in gpx_data:
+        if len(point) >= 2:
+            lat, lon = point[0], point[1]
+            ele = point[2] if len(point) > 2 else ""
+            ele_tag = f"      <ele>{ele}</ele>\n" if ele else ""
+            gpx_content += f"    <trkpt lat=\"{lat}\" lon=\"{lon}\">\n{ele_tag}    </trkpt>\n"
+
+    gpx_content += "    </trkseg>\n  </trk>\n</gpx>"
+
+    from fastapi.responses import Response
+    return Response(
+        content=gpx_content,
+        media_type="application/gpx+xml",
+        headers={"Content-Disposition": f'attachment; filename="{race_name}.gpx"'}
+    )
 
 
 @app.post("/api/races/{race_id}/chatbot-settings")
