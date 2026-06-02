@@ -880,6 +880,143 @@ def page_qa(request: Request, race_id: str, session: str = Cookie(default=None))
     })
 
 
+@app.post("/api/races/{race_id}/analyze")
+async def analyze_race_questions(
+    race_id: str,
+    session: str = Cookie(default=None)
+):
+    """Analizza le domande degli ultimi 30 giorni e genera insights per l'organizzatore."""
+    organizer = get_current_organizer(session) if session else None
+    if not organizer:
+        raise HTTPException(status_code=401, detail="Non autenticato")
+
+    # Recupera domande ultimi 30 giorni
+    from datetime import datetime, timedelta
+    since = (datetime.utcnow() - timedelta(days=30)).isoformat()
+    questions = supabase.table("questions_log").select("*").eq("race_id", race_id).gte("created_at", since).execute().data or []
+
+    if not questions:
+        return {"insights": [], "message": "Nessuna domanda negli ultimi 30 giorni"}
+
+    # Separa risposte automatiche da ticket
+    answered = [q["question"] for q in questions if q.get("answered")]
+    unanswered = [q["question"] for q in questions if not q.get("answered")]
+
+    # Conta frequenze domande senza risposta
+    from collections import Counter
+    unanswered_counts = Counter(unanswered)
+    answered_counts = Counter(answered)
+
+    # Top lacune (domande senza risposta, minimo 2 occorrenze)
+    top_gaps = [(q, c) for q, c in unanswered_counts.most_common(10) if c >= 1]
+    # Top domande frequenti (risposte ma molto chieste, minimo 5 occorrenze)
+    top_frequent = [(q, c) for q, c in answered_counts.most_common(10) if c >= 3]
+
+    if not top_gaps and not top_frequent:
+        return {"insights": [], "message": "Dati insufficienti per generare suggerimenti"}
+
+    # Usa Claude per generare suggerimenti intelligenti
+    import anthropic
+    client = anthropic.Anthropic(api_key=os.getenv("ANTHROPIC_API_KEY"))
+
+    gaps_text = "\n".join([f"- '{q}' ({c} volte)" for q, c in top_gaps]) if top_gaps else "Nessuna"
+    frequent_text = "\n".join([f"- '{q}' ({c} volte)" for q, c in top_frequent]) if top_frequent else "Nessuna"
+
+    prompt = f"""Sei un consulente esperto di comunicazione per eventi sportivi.
+Analizza queste domande ricevute da un chatbot per una gara sportiva e genera suggerimenti concreti per l'organizzatore.
+
+DOMANDE SENZA RISPOSTA (lacune nel regolamento):
+{gaps_text}
+
+DOMANDE FREQUENTI (risposta c'è ma i partecipanti chiedono comunque):
+{frequent_text}
+
+Per ogni gruppo, genera massimo 3 suggerimenti concreti e brevi in italiano.
+Formato JSON:
+{{
+  "gaps": [
+    {{"question": "domanda originale", "suggestion": "Aggiungi una sezione X al regolamento che spieghi Y", "priority": "alta/media/bassa"}}
+  ],
+  "frequent": [
+    {{"question": "domanda originale", "suggestion": "Metti in evidenza l'informazione su X nella sezione Y del regolamento", "priority": "alta/media/bassa"}}
+  ]
+}}
+Rispondi SOLO con il JSON, nessun testo aggiuntivo."""
+
+    try:
+        response = client.messages.create(
+            model="claude-haiku-4-5-20251001",
+            max_tokens=1000,
+            messages=[{"role": "user", "content": prompt}]
+        )
+        analysis = json.loads(response.content[0].text)
+    except Exception:
+        # Fallback: genera insights semplici senza Claude
+        analysis = {
+            "gaps": [{"question": q, "suggestion": f"Aggiungi informazioni su questo argomento nel regolamento", "priority": "alta" if c >= 3 else "media"} for q, c in top_gaps[:3]],
+            "frequent": [{"question": q, "suggestion": f"Questa domanda viene chiesta spesso — mettila in evidenza o nelle FAQ", "priority": "media"} for q, c in top_frequent[:3]]
+        }
+
+    # Salva insights nel DB (prima elimina quelli vecchi pending)
+    supabase.table("race_insights").delete().eq("race_id", race_id).eq("status", "pending").execute()
+
+    insights_to_save = []
+    for item in analysis.get("gaps", []):
+        count = unanswered_counts.get(item["question"], 1)
+        insights_to_save.append({
+            "id": str(uuid.uuid4()),
+            "race_id": race_id,
+            "type": "gap",
+            "question_example": item["question"],
+            "count": count,
+            "suggestion": item["suggestion"],
+            "status": "pending"
+        })
+    for item in analysis.get("frequent", []):
+        count = answered_counts.get(item["question"], 1)
+        insights_to_save.append({
+            "id": str(uuid.uuid4()),
+            "race_id": race_id,
+            "type": "frequent",
+            "question_example": item["question"],
+            "count": count,
+            "suggestion": item["suggestion"],
+            "status": "pending"
+        })
+
+    if insights_to_save:
+        supabase.table("race_insights").insert(insights_to_save).execute()
+
+    return {"insights": insights_to_save, "analyzed": len(questions)}
+
+
+@app.get("/api/races/{race_id}/insights")
+def get_race_insights(race_id: str, session: str = Cookie(default=None)):
+    organizer = get_current_organizer(session) if session else None
+    if not organizer:
+        raise HTTPException(status_code=401, detail="Non autenticato")
+    insights = supabase.table("race_insights").select("*").eq("race_id", race_id).eq("status", "pending").order("count", desc=True).execute().data or []
+    return insights
+
+
+@app.post("/api/insights/{insight_id}/done")
+def mark_insight_done(insight_id: str, session: str = Cookie(default=None)):
+    organizer = get_current_organizer(session) if session else None
+    if not organizer:
+        raise HTTPException(status_code=401, detail="Non autenticato")
+    supabase.table("race_insights").update({"status": "done"}).eq("id", insight_id).execute()
+    return {"ok": True}
+
+
+@app.post("/api/insights/{insight_id}/dismiss")
+def dismiss_insight(insight_id: str, session: str = Cookie(default=None)):
+    organizer = get_current_organizer(session) if session else None
+    if not organizer:
+        raise HTTPException(status_code=401, detail="Non autenticato")
+    supabase.table("race_insights").update({"status": "dismissed"}).eq("id", insight_id).execute()
+    return {"ok": True}
+
+
 @app.get("/api/races/{race_id}/info")
 def api_race_info(race_id: str):
     result = supabase.table("races").select("name,date,start_time,location,length_km,elevation_gain,notes").eq("id", race_id).execute()
