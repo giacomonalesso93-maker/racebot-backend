@@ -191,7 +191,8 @@
         .replace(/\n/g,"<br>")
         .replace(/\*\*(.*?)\*\*/g,"<strong>$1</strong>")
         .replace(/\*(.*?)\*/g,"<em>$1</em>")
-        .replace(/(https?:\/\/[^\s<&]+)/g,'<a href="$1" target="_blank">🗺️ Apri mappa</a>');
+        .replace(/\[([^\]]+)\]\((https?:\/\/[^)]+)\)/g,'<a href="$2" target="_blank" style="color:#6366f1;text-decoration:underline;">$1</a>')
+        .replace(/(https?:\/\/[^\s<&"]+)/g,'<a href="$1" target="_blank" style="color:#6366f1;text-decoration:underline;">⬇️ Scarica</a>');
     }
 
     var EVENT_LOGO = "{{ event.chatbot_logo_url or '' }}";
