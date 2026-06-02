@@ -564,7 +564,7 @@ async def ask_question(
     # Aggiunge link download GPX se disponibile
     gpx_download_url = ""
     if race.get("gpx_data"):
-        base_url = str(request.base_url).rstrip("/")
+        base_url = str(request.base_url).rstrip("/").replace("http://", "https://")
         gpx_download_url = f"{base_url}/p/{race_id}/download-gpx"
 
     race_info = {
