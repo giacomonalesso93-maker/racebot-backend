@@ -27,6 +27,7 @@ from auth import register_organizer, login_organizer, get_current_organizer
 from embeddings import process_pdf, search
 from chat import get_answer, stream_answer
 from tickets import create_ticket, notify_organizer, notify_participant, get_tickets_for_organizer, reply_to_ticket
+from emails import send_welcome_email, send_approval_email
 from locations import add_location, get_locations, delete_location, update_location, TIPI_POSIZIONE
 from custom_qa import add_qa, get_qa, delete_qa, get_qa_context
 from plans import get_features, plan_label, plan_color, PLAN_LABELS, PLAN_ORDER, PLAN_MAX_RACES, PLAN_FEATURES
@@ -169,6 +170,7 @@ def api_register(request: Request, email: str = Form(...), password: str = Form(
         organizer = register_organizer(email, password, name)
         if not organizer:
             return templates.TemplateResponse(request=request, name="register.html", context={"error": "Errore durante la registrazione. Riprova."})
+        send_welcome_email(email, name)
         return templates.TemplateResponse(request=request, name="register.html", context={"success": True})
     except Exception as e:
         return templates.TemplateResponse(request=request, name="register.html", context={"error": "Errore durante la registrazione. Riprova."})
@@ -1724,6 +1726,10 @@ def admin_approve_organizer(
         "status": "active",
         "plan": plan if plan in PLAN_ORDER else "single",
     }).eq("id", organizer_id).execute()
+    # Invia email di approvazione all'organizzatore
+    org = supabase.table("organizers").select("email,name").eq("id", organizer_id).execute().data
+    if org:
+        send_approval_email(org[0]["email"], org[0]["name"], plan if plan in PLAN_ORDER else "single")
     return RedirectResponse(url="/admin?ok=Account+approvato", status_code=303)
 
 
