@@ -1330,11 +1330,16 @@ def page_event_detail(request: Request, event_id: str, session: str = Cookie(def
     event = result.data[0]
     races = supabase.table("races").select("*").eq("event_id", event_id).execute().data or []
     event_locations = supabase.table("locations").select("*").eq("event_id", event_id).execute().data or []
+    org_plan = organizer.get("plan") or "single"
+    all_races_count = len(supabase.table("races").select("id").eq("organizer_id", organizer["id"]).execute().data or [])
     return templates.TemplateResponse(request=request, name="event_detail.html", context={
         "organizer": organizer,
         "event": event,
         "races": races,
-        "event_locations": event_locations
+        "event_locations": event_locations,
+        "plan_label": plan_label(org_plan),
+        "plan_max_races": PLAN_MAX_RACES.get(org_plan),
+        "total_races_count": all_races_count,
     })
 
 

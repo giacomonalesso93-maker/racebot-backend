@@ -230,8 +230,16 @@
       </details>
     </div>
 
-    <div class="card">
-      <h2>Aggiungi gara a questo evento</h2>
+    <div class="card" style="border: 2px solid #2563eb; box-shadow: 0 4px 24px rgba(37,99,235,0.08);">
+      <div style="display:flex; align-items:center; gap:10px; margin-bottom:4px;">
+        <span style="font-size:22px;">🏁</span>
+        <h2 style="margin:0; color:#1e293b;">Aggiungi gara a questo evento</h2>
+      </div>
+      {% if plan_max_races is not none %}
+      <div style="background:#eff6ff; border:1px solid #bfdbfe; border-radius:8px; padding:10px 14px; margin:10px 0 16px; font-size:13px; color:#1d4ed8;">
+        💡 Piano <strong>{{ plan_label }}</strong> — puoi aggiungere <strong>1 gara</strong> a questo evento. Usate: <strong>{{ total_races_count }}</strong>/1.
+      </div>
+      {% endif %}
       <form method="POST" action="/api/races">
         <input type="hidden" name="event_id" value="{{ event.id }}">
         <label>Nome gara *</label>
