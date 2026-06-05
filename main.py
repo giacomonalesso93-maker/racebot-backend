@@ -1618,10 +1618,15 @@ def page_widget_preview_event(request: Request, event_id: str):
     if not result.data:
         raise HTTPException(status_code=404, detail="Evento non trovato")
     event = result.data[0]
+    # Prendi la prima gara dell'evento per l'API ask
+    races = supabase.table("races").select("id").eq("event_id", event_id).execute().data or []
+    first_race_id = races[0]["id"] if races else None
     color = event.get("chatbot_color") or "#2563eb"
     name = event.get("chatbot_name") or event["name"]
     welcome = event.get("welcome_message") or f"Ciao! 👋 Sono l'assistente di <strong>{event['name']}</strong>. Come posso aiutarti?"
     logo_html = f'<img src="{event["chatbot_logo_url"]}" style="width:30px;height:30px;object-fit:contain;border-radius:6px;" alt="logo">' if event.get("chatbot_logo_url") else "🏆"
+    if not first_race_id:
+        return HTMLResponse(content=f"<p style='font-family:system-ui;padding:40px;color:#64748b;'>Nessuna gara trovata per questo evento. Aggiungi prima una gara dall'organizzatore.</p>")
 
     html = f"""<!DOCTYPE html>
 <html lang="it">
@@ -1648,7 +1653,7 @@ def page_widget_preview_event(request: Request, event_id: str):
     .fake-card {{ background: white; border-radius: 12px; padding: 24px; box-shadow: 0 1px 4px rgba(0,0,0,0.06); }}
     .fake-card h3 {{ font-size: 14px; font-weight: 700; color: #0f172a; margin-bottom: 12px; }}
     .fake-line {{ height: 10px; background: #f1f5f9; border-radius: 4px; margin-bottom: 8px; }}
-    #rb-bubble {{ position: fixed; bottom: 24px; right: 24px; width: 58px; height: 58px; background: linear-gradient(135deg, {color}, {color}cc); border-radius: 50%; display: flex; align-items: center; justify-content: center; cursor: pointer; z-index: 9999; box-shadow: 0 6px 24px rgba(37,99,235,0.45); transition: transform 0.2s; font-size: 24px; }}
+    #rb-bubble {{ position: fixed; bottom: 24px; right: 24px; width: 58px; height: 58px; background: {color}; border-radius: 50%; display: flex; align-items: center; justify-content: center; cursor: pointer; z-index: 9999; box-shadow: 0 6px 24px rgba(37,99,235,0.45); transition: transform 0.2s; font-size: 24px; }}
     #rb-bubble:hover {{ transform: scale(1.08); }}
     #rb-window {{ position: fixed; bottom: 96px; right: 24px; width: 360px; height: 520px; background: white; border-radius: 20px; box-shadow: 0 16px 60px rgba(0,0,0,0.18); display: flex; flex-direction: column; overflow: hidden; z-index: 9998; transform: scale(0.85) translateY(20px); opacity: 0; pointer-events: none; transition: transform 0.25s cubic-bezier(0.34,1.56,0.64,1), opacity 0.2s; transform-origin: bottom right; }}
     #rb-window.open {{ transform: scale(1) translateY(0); opacity: 1; pointer-events: all; }}
@@ -1662,21 +1667,17 @@ def page_widget_preview_event(request: Request, event_id: str):
     .rb-messages {{ flex: 1; overflow-y: auto; padding: 14px; display: flex; flex-direction: column; gap: 12px; background: #f8fafc; }}
     .rb-row {{ display: flex; align-items: flex-end; gap: 7px; }}
     .rb-row.user {{ flex-direction: row-reverse; }}
-    .rb-av {{ width: 26px; height: 26px; border-radius: 8px; background: linear-gradient(135deg,{color},#1d4ed8); display: flex; align-items: center; justify-content: center; font-size: 13px; flex-shrink: 0; }}
+    .rb-av {{ width: 26px; height: 26px; border-radius: 8px; background: {color}; display: flex; align-items: center; justify-content: center; font-size: 13px; flex-shrink: 0; }}
     .rb-msg {{ max-width: 80%; padding: 9px 13px; font-size: 13px; line-height: 1.6; border-radius: 16px; word-wrap: break-word; }}
-    .rb-msg.bot {{ background: white; color: #1e293b; border: 1px solid #e2e8f0; border-bottom-left-radius: 3px; box-shadow: 0 1px 4px rgba(0,0,0,0.05); }}
-    .rb-msg.user {{ background: linear-gradient(135deg,{color},#1d4ed8); color: white; border-bottom-right-radius: 3px; }}
-    .rb-msg.streaming::after {{ content:"▋"; display:inline; animation:blink 0.7s step-end infinite; color:{color}; margin-left:2px; }}
-    @keyframes blink {{ 0%,100%{{opacity:1;}} 50%{{opacity:0;}} }}
+    .rb-msg.bot {{ background: white; color: #1e293b; border: 1px solid #e2e8f0; border-bottom-left-radius: 3px; }}
+    .rb-msg.user {{ background: {color}; color: white; border-bottom-right-radius: 3px; }}
     .rb-quick {{ display:flex; flex-wrap:wrap; gap:6px; padding:2px 0 4px 33px; }}
-    .rb-quick-btn {{ font-size:11px; padding:4px 10px; border-radius:20px; background:#eff6ff; border:1px solid #bfdbfe; color:#1d4ed8; cursor:pointer; white-space:nowrap; }}
+    .rb-quick-btn {{ font-size:11px; padding:4px 10px; border-radius:20px; background:#eff6ff; border:1px solid #bfdbfe; color:#1d4ed8; cursor:pointer; }}
     .rb-input-area {{ padding: 10px 12px 12px; display: flex; gap: 8px; align-items: center; border-top: 1px solid #e2e8f0; background: white; flex-shrink: 0; }}
     .rb-input-wrap {{ flex:1; display:flex; align-items:center; background:#f8fafc; border:1.5px solid #e2e8f0; border-radius:20px; padding:0 12px; }}
-    .rb-input-wrap:focus-within {{ border-color:{color}; background:white; }}
-    .rb-input-wrap input {{ flex:1; padding:9px 0; border:none; background:transparent; font-size:13px; outline:none; color:#0f172a; }}
+    .rb-input-wrap input {{ flex:1; padding:9px 0; border:none; background:transparent; font-size:13px; outline:none; }}
     .rb-send {{ width:36px; height:36px; border-radius:10px; background:{color}; border:none; color:white; font-size:16px; cursor:pointer; display:flex; align-items:center; justify-content:center; flex-shrink:0; }}
     .rb-powered {{ text-align:center; font-size:10px; color:#94a3b8; padding-bottom:4px; background:white; }}
-    .rb-powered a {{ color:{color}; text-decoration:none; font-weight:700; }}
   </style>
 </head>
 <body>
@@ -1694,10 +1695,10 @@ def page_widget_preview_event(request: Request, event_id: str):
     </div>
     <div class="fake-hero">
       <h1>{event['name']}</h1>
-      <p>Benvenuto sulla pagina ufficiale dell'evento — il chatbot risponde a tutte le tue domande</p>
+      <p>Benvenuto sulla pagina ufficiale dell'evento</p>
     </div>
     <div class="fake-content">
-      <div class="fake-card"><h3>Informazioni evento</h3><div class="fake-line" style="width:80%"></div><div class="fake-line" style="width:60%"></div><div class="fake-line" style="width:70%"></div></div>
+      <div class="fake-card"><h3>Informazioni evento</h3><div class="fake-line" style="width:80%"></div><div class="fake-line" style="width:60%"></div></div>
       <div class="fake-card"><h3>Come arrivare</h3><div class="fake-line"></div><div class="fake-line" style="width:75%"></div></div>
     </div>
   </div>
@@ -1715,7 +1716,7 @@ def page_widget_preview_event(request: Request, event_id: str):
     </div>
     <div class="rb-quick" id="rb-quick">
       <button class="rb-quick-btn" onclick="rbQuick(this,'Dove parcheggio?')">🅿️ Parcheggi?</button>
-      <button class="rb-quick-btn" onclick="rbQuick(this,'A che ora parte la gara?')">⏰ Orario?</button>
+      <button class="rb-quick-btn" onclick="rbQuick(this,'Orario partenza?')">⏰ Orario?</button>
       <button class="rb-quick-btn" onclick="rbQuick(this,'Materiale obbligatorio?')">🎒 Materiale?</button>
     </div>
     <div class="rb-input-area">
@@ -1725,7 +1726,7 @@ def page_widget_preview_event(request: Request, event_id: str):
     <div class="rb-powered">Powered by <a href="https://repliq.it" target="_blank">Repliq</a></div>
   </div>
   <script>
-    const EVENT_ID = "{event_id}";
+    const RACE_ID = "{first_race_id}";
     const msgs = document.getElementById("rb-messages");
     const input = document.getElementById("rb-input");
     const sendBtn = document.getElementById("rb-send");
@@ -1737,50 +1738,48 @@ def page_widget_preview_event(request: Request, event_id: str):
     }}
     function rbQuick(btn, q) {{ const qc = document.getElementById("rb-quick"); if (qc) qc.remove(); input.value = q; rbSend(); }}
     input.addEventListener("keydown", e => {{ if (e.key === "Enter") rbSend(); }});
-    function rbFmt(text) {{
-      return text.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;")
-        .replace(/\\n/g,"<br>").replace(/\*\*(.*?)\*\*/g,"<strong>$1</strong>")
-        .replace(/(https?:\/\/[^\\s<&]+)/g,'<a href="$1" target="_blank">🗺️ Mappa</a>');
+    function rbFmt(t) {{
+      return t.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;")
+        .replace(/\\n/g,"<br>").replace(/\*\*(.*?)\*\*/g,"<strong>$1</strong>");
     }}
     function rbAddRow(text, type) {{
-      const row = document.createElement("div"); row.className = "rb-row" + (type==="user"?" user":"");
-      if (type !== "user") {{ const av = document.createElement("div"); av.className="rb-av"; av.textContent="🏆"; row.appendChild(av); }}
-      const div = document.createElement("div");
-      div.className = "rb-msg " + (type==="user"?"user":type==="stream"?"bot streaming":"bot");
-      div.innerHTML = rbFmt(text); row.appendChild(div); msgs.appendChild(row); msgs.scrollTop=msgs.scrollHeight;
-      return div;
+      const row = document.createElement("div"); row.className="rb-row"+(type==="user"?" user":"");
+      if (type!=="user") {{ const av=document.createElement("div"); av.className="rb-av"; av.textContent="🏆"; row.appendChild(av); }}
+      const div=document.createElement("div"); div.className="rb-msg "+(type==="user"?"user":"bot");
+      div.innerHTML=rbFmt(text); row.appendChild(div); msgs.appendChild(row); msgs.scrollTop=msgs.scrollHeight; return div;
     }}
     async function rbSend() {{
-      const q = input.value.trim(); if (!q) return;
-      input.value = ""; sendBtn.disabled = true;
+      const q=input.value.trim(); if(!q) return;
+      input.value=""; sendBtn.disabled=true;
       rbAddRow(q,"user"); history.push({{role:"user",content:q}});
-      const botDiv = rbAddRow("","stream"); let fullText = "";
+      const botDiv=rbAddRow("...","bot"); let fullText="";
       try {{
-        const fd = new FormData(); fd.append("question",q); fd.append("history",JSON.stringify(history.slice(0,-1)));
-        const resp = await fetch("/api/ask/event/"+EVENT_ID, {{method:"POST",body:fd}});
-        if (!resp.ok) {{ botDiv.className="rb-msg bot"; botDiv.innerHTML=rbFmt("Errore. Riprova."); return; }}
-        const reader = resp.body.getReader(); const dec = new TextDecoder(); let buf = "";
-        while (true) {{
-          const {{done,value}} = await reader.read(); if (done) break;
-          buf += dec.decode(value,{{stream:true}});
-          const parts = buf.split("\\n\\n"); buf = parts.pop();
-          for (const part of parts) {{
-            if (!part.startsWith("data: ")) continue;
-            const data = part.slice(6);
-            if (data==="[DONE]") {{ botDiv.classList.remove("streaming"); continue; }}
-            if (data.startsWith("[META]")||data.startsWith("[ERROR]")) continue;
-            fullText += data.replace(/\\\\n/g,"\\n");
-            botDiv.innerHTML = rbFmt(fullText); msgs.scrollTop=msgs.scrollHeight;
+        const fd=new FormData(); fd.append("question",q); fd.append("history",JSON.stringify(history.slice(0,-1)));
+        const resp=await fetch("/api/ask/"+RACE_ID,{{method:"POST",body:fd}});
+        if(!resp.ok){{ botDiv.innerHTML="Errore. Riprova."; sendBtn.disabled=false; return; }}
+        const reader=resp.body.getReader(); const dec=new TextDecoder(); let buf="";
+        botDiv.innerHTML="";
+        while(true) {{
+          const {{done,value}}=await reader.read(); if(done) break;
+          buf+=dec.decode(value,{{stream:true}});
+          const parts=buf.split("\\n\\n"); buf=parts.pop();
+          for(const part of parts) {{
+            if(!part.startsWith("data: ")) continue;
+            const data=part.slice(6);
+            if(data==="[DONE]"||data.startsWith("[META]")||data.startsWith("[ERROR]")) continue;
+            fullText+=data.replace(/\\\\n/g,"\\n");
+            botDiv.innerHTML=rbFmt(fullText); msgs.scrollTop=msgs.scrollHeight;
           }}
         }}
         history.push({{role:"assistant",content:fullText}});
-      }} catch(e) {{ botDiv.classList.remove("streaming"); botDiv.innerHTML=rbFmt("Errore di connessione."); }}
+      }} catch(e) {{ botDiv.innerHTML="Errore di connessione."; }}
       finally {{ sendBtn.disabled=false; input.focus(); }}
     }}
   </script>
 </body>
 </html>"""
     return HTMLResponse(content=html)
+
 
 
 @app.get("/widget/event/{event_id}", response_class=HTMLResponse)
