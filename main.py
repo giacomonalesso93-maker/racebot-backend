@@ -1612,6 +1612,177 @@ def page_widget_preview(request: Request, race_id: str):
     return HTMLResponse(content=html)
 
 
+@app.get("/widget-preview/event/{event_id}", response_class=HTMLResponse)
+def page_widget_preview_event(request: Request, event_id: str):
+    result = supabase.table("events").select("*").eq("id", event_id).execute()
+    if not result.data:
+        raise HTTPException(status_code=404, detail="Evento non trovato")
+    event = result.data[0]
+    color = event.get("chatbot_color") or "#2563eb"
+    name = event.get("chatbot_name") or event["name"]
+    welcome = event.get("welcome_message") or f"Ciao! 👋 Sono l'assistente di <strong>{event['name']}</strong>. Come posso aiutarti?"
+    logo_html = f'<img src="{event["chatbot_logo_url"]}" style="width:30px;height:30px;object-fit:contain;border-radius:6px;" alt="logo">' if event.get("chatbot_logo_url") else "🏆"
+
+    html = f"""<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Anteprima Widget — {event['name']}</title>
+  <style>
+    * {{ box-sizing: border-box; margin: 0; padding: 0; }}
+    body {{ font-family: system-ui, sans-serif; background: #f1f5f9; }}
+    .preview-bar {{ background: #0f172a; color: white; padding: 12px 24px; display: flex; align-items: center; justify-content: space-between; position: sticky; top: 0; z-index: 100; }}
+    .preview-label {{ font-size: 12px; font-weight: 700; color: #4ade80; letter-spacing: 0.5px; text-transform: uppercase; }}
+    .preview-name {{ font-size: 14px; color: rgba(255,255,255,0.7); margin-left: 12px; }}
+    .preview-hint {{ font-size: 12px; color: rgba(255,255,255,0.5); }}
+    .fake-site {{ max-width: 900px; margin: 40px auto; padding: 0 24px 120px; }}
+    .fake-header {{ background: white; border-radius: 12px; padding: 20px 28px; margin-bottom: 24px; display: flex; align-items: center; justify-content: space-between; box-shadow: 0 1px 4px rgba(0,0,0,0.06); }}
+    .fake-logo {{ font-size: 18px; font-weight: 800; color: #0f172a; }}
+    .fake-nav {{ display: flex; gap: 20px; }}
+    .fake-nav span {{ font-size: 13px; color: #94a3b8; }}
+    .fake-hero {{ background: linear-gradient(135deg, #1e3a8a, {color}); border-radius: 12px; padding: 48px 32px; text-align: center; margin-bottom: 24px; }}
+    .fake-hero h1 {{ font-size: 28px; font-weight: 800; color: white; margin-bottom: 8px; }}
+    .fake-hero p {{ color: rgba(255,255,255,0.75); font-size: 14px; }}
+    .fake-content {{ display: grid; grid-template-columns: 2fr 1fr; gap: 20px; }}
+    .fake-card {{ background: white; border-radius: 12px; padding: 24px; box-shadow: 0 1px 4px rgba(0,0,0,0.06); }}
+    .fake-card h3 {{ font-size: 14px; font-weight: 700; color: #0f172a; margin-bottom: 12px; }}
+    .fake-line {{ height: 10px; background: #f1f5f9; border-radius: 4px; margin-bottom: 8px; }}
+    #rb-bubble {{ position: fixed; bottom: 24px; right: 24px; width: 58px; height: 58px; background: linear-gradient(135deg, {color}, {color}cc); border-radius: 50%; display: flex; align-items: center; justify-content: center; cursor: pointer; z-index: 9999; box-shadow: 0 6px 24px rgba(37,99,235,0.45); transition: transform 0.2s; font-size: 24px; }}
+    #rb-bubble:hover {{ transform: scale(1.08); }}
+    #rb-window {{ position: fixed; bottom: 96px; right: 24px; width: 360px; height: 520px; background: white; border-radius: 20px; box-shadow: 0 16px 60px rgba(0,0,0,0.18); display: flex; flex-direction: column; overflow: hidden; z-index: 9998; transform: scale(0.85) translateY(20px); opacity: 0; pointer-events: none; transition: transform 0.25s cubic-bezier(0.34,1.56,0.64,1), opacity 0.2s; transform-origin: bottom right; }}
+    #rb-window.open {{ transform: scale(1) translateY(0); opacity: 1; pointer-events: all; }}
+    .rb-header {{ background: linear-gradient(135deg, #1e3a8a, {color}); padding: 14px 16px; display: flex; align-items: center; justify-content: space-between; flex-shrink: 0; }}
+    .rb-header-left {{ display: flex; align-items: center; gap: 10px; }}
+    .rb-avatar {{ width: 36px; height: 36px; border-radius: 10px; background: rgba(255,255,255,0.15); display: flex; align-items: center; justify-content: center; font-size: 18px; }}
+    .rb-title {{ font-size: 14px; font-weight: 800; color: white; }}
+    .rb-subtitle {{ font-size: 10px; color: rgba(255,255,255,0.65); display: flex; align-items: center; gap: 4px; margin-top: 1px; }}
+    .rb-dot {{ width: 5px; height: 5px; background: #4ade80; border-radius: 50%; }}
+    .rb-close {{ background: rgba(255,255,255,0.12); border: none; color: white; width: 28px; height: 28px; border-radius: 8px; cursor: pointer; font-size: 14px; display: flex; align-items: center; justify-content: center; }}
+    .rb-messages {{ flex: 1; overflow-y: auto; padding: 14px; display: flex; flex-direction: column; gap: 12px; background: #f8fafc; }}
+    .rb-row {{ display: flex; align-items: flex-end; gap: 7px; }}
+    .rb-row.user {{ flex-direction: row-reverse; }}
+    .rb-av {{ width: 26px; height: 26px; border-radius: 8px; background: linear-gradient(135deg,{color},#1d4ed8); display: flex; align-items: center; justify-content: center; font-size: 13px; flex-shrink: 0; }}
+    .rb-msg {{ max-width: 80%; padding: 9px 13px; font-size: 13px; line-height: 1.6; border-radius: 16px; word-wrap: break-word; }}
+    .rb-msg.bot {{ background: white; color: #1e293b; border: 1px solid #e2e8f0; border-bottom-left-radius: 3px; box-shadow: 0 1px 4px rgba(0,0,0,0.05); }}
+    .rb-msg.user {{ background: linear-gradient(135deg,{color},#1d4ed8); color: white; border-bottom-right-radius: 3px; }}
+    .rb-msg.streaming::after {{ content:"▋"; display:inline; animation:blink 0.7s step-end infinite; color:{color}; margin-left:2px; }}
+    @keyframes blink {{ 0%,100%{{opacity:1;}} 50%{{opacity:0;}} }}
+    .rb-quick {{ display:flex; flex-wrap:wrap; gap:6px; padding:2px 0 4px 33px; }}
+    .rb-quick-btn {{ font-size:11px; padding:4px 10px; border-radius:20px; background:#eff6ff; border:1px solid #bfdbfe; color:#1d4ed8; cursor:pointer; white-space:nowrap; }}
+    .rb-input-area {{ padding: 10px 12px 12px; display: flex; gap: 8px; align-items: center; border-top: 1px solid #e2e8f0; background: white; flex-shrink: 0; }}
+    .rb-input-wrap {{ flex:1; display:flex; align-items:center; background:#f8fafc; border:1.5px solid #e2e8f0; border-radius:20px; padding:0 12px; }}
+    .rb-input-wrap:focus-within {{ border-color:{color}; background:white; }}
+    .rb-input-wrap input {{ flex:1; padding:9px 0; border:none; background:transparent; font-size:13px; outline:none; color:#0f172a; }}
+    .rb-send {{ width:36px; height:36px; border-radius:10px; background:{color}; border:none; color:white; font-size:16px; cursor:pointer; display:flex; align-items:center; justify-content:center; flex-shrink:0; }}
+    .rb-powered {{ text-align:center; font-size:10px; color:#94a3b8; padding-bottom:4px; background:white; }}
+    .rb-powered a {{ color:{color}; text-decoration:none; font-weight:700; }}
+  </style>
+</head>
+<body>
+  <div class="preview-bar">
+    <div style="display:flex;align-items:center;">
+      <div class="preview-label">👁️ Anteprima widget</div>
+      <div class="preview-name">{event['name']}</div>
+    </div>
+    <div class="preview-hint">Clicca la bolla in basso a destra →</div>
+  </div>
+  <div class="fake-site">
+    <div class="fake-header">
+      <div class="fake-logo">🏆 {event['name']}</div>
+      <div class="fake-nav"><span>Home</span><span>Gare</span><span>Info</span><span>Contatti</span></div>
+    </div>
+    <div class="fake-hero">
+      <h1>{event['name']}</h1>
+      <p>Benvenuto sulla pagina ufficiale dell'evento — il chatbot risponde a tutte le tue domande</p>
+    </div>
+    <div class="fake-content">
+      <div class="fake-card"><h3>Informazioni evento</h3><div class="fake-line" style="width:80%"></div><div class="fake-line" style="width:60%"></div><div class="fake-line" style="width:70%"></div></div>
+      <div class="fake-card"><h3>Come arrivare</h3><div class="fake-line"></div><div class="fake-line" style="width:75%"></div></div>
+    </div>
+  </div>
+  <div id="rb-bubble" onclick="rbToggle()"><span>💬</span></div>
+  <div id="rb-window">
+    <div class="rb-header">
+      <div class="rb-header-left">
+        <div class="rb-avatar">{logo_html}</div>
+        <div><div class="rb-title">{name}</div><div class="rb-subtitle"><span class="rb-dot"></span> Assistente attivo</div></div>
+      </div>
+      <button class="rb-close" onclick="rbToggle()">✕</button>
+    </div>
+    <div class="rb-messages" id="rb-messages">
+      <div class="rb-row"><div class="rb-av">🏆</div><div class="rb-msg bot">{welcome}</div></div>
+    </div>
+    <div class="rb-quick" id="rb-quick">
+      <button class="rb-quick-btn" onclick="rbQuick(this,'Dove parcheggio?')">🅿️ Parcheggi?</button>
+      <button class="rb-quick-btn" onclick="rbQuick(this,'A che ora parte la gara?')">⏰ Orario?</button>
+      <button class="rb-quick-btn" onclick="rbQuick(this,'Materiale obbligatorio?')">🎒 Materiale?</button>
+    </div>
+    <div class="rb-input-area">
+      <div class="rb-input-wrap"><input type="text" id="rb-input" placeholder="Scrivi una domanda..." autocomplete="off"></div>
+      <button class="rb-send" id="rb-send" onclick="rbSend()">➤</button>
+    </div>
+    <div class="rb-powered">Powered by <a href="https://repliq.it" target="_blank">Repliq</a></div>
+  </div>
+  <script>
+    const EVENT_ID = "{event_id}";
+    const msgs = document.getElementById("rb-messages");
+    const input = document.getElementById("rb-input");
+    const sendBtn = document.getElementById("rb-send");
+    let history = [];
+    function rbToggle() {{
+      document.getElementById("rb-bubble").classList.toggle("open");
+      document.getElementById("rb-window").classList.toggle("open");
+      if (document.getElementById("rb-window").classList.contains("open")) input.focus();
+    }}
+    function rbQuick(btn, q) {{ const qc = document.getElementById("rb-quick"); if (qc) qc.remove(); input.value = q; rbSend(); }}
+    input.addEventListener("keydown", e => {{ if (e.key === "Enter") rbSend(); }});
+    function rbFmt(text) {{
+      return text.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;")
+        .replace(/\\n/g,"<br>").replace(/\*\*(.*?)\*\*/g,"<strong>$1</strong>")
+        .replace(/(https?:\/\/[^\\s<&]+)/g,'<a href="$1" target="_blank">🗺️ Mappa</a>');
+    }}
+    function rbAddRow(text, type) {{
+      const row = document.createElement("div"); row.className = "rb-row" + (type==="user"?" user":"");
+      if (type !== "user") {{ const av = document.createElement("div"); av.className="rb-av"; av.textContent="🏆"; row.appendChild(av); }}
+      const div = document.createElement("div");
+      div.className = "rb-msg " + (type==="user"?"user":type==="stream"?"bot streaming":"bot");
+      div.innerHTML = rbFmt(text); row.appendChild(div); msgs.appendChild(row); msgs.scrollTop=msgs.scrollHeight;
+      return div;
+    }}
+    async function rbSend() {{
+      const q = input.value.trim(); if (!q) return;
+      input.value = ""; sendBtn.disabled = true;
+      rbAddRow(q,"user"); history.push({{role:"user",content:q}});
+      const botDiv = rbAddRow("","stream"); let fullText = "";
+      try {{
+        const fd = new FormData(); fd.append("question",q); fd.append("history",JSON.stringify(history.slice(0,-1)));
+        const resp = await fetch("/api/ask/event/"+EVENT_ID, {{method:"POST",body:fd}});
+        if (!resp.ok) {{ botDiv.className="rb-msg bot"; botDiv.innerHTML=rbFmt("Errore. Riprova."); return; }}
+        const reader = resp.body.getReader(); const dec = new TextDecoder(); let buf = "";
+        while (true) {{
+          const {{done,value}} = await reader.read(); if (done) break;
+          buf += dec.decode(value,{{stream:true}});
+          const parts = buf.split("\\n\\n"); buf = parts.pop();
+          for (const part of parts) {{
+            if (!part.startsWith("data: ")) continue;
+            const data = part.slice(6);
+            if (data==="[DONE]") {{ botDiv.classList.remove("streaming"); continue; }}
+            if (data.startsWith("[META]")||data.startsWith("[ERROR]")) continue;
+            fullText += data.replace(/\\\\n/g,"\\n");
+            botDiv.innerHTML = rbFmt(fullText); msgs.scrollTop=msgs.scrollHeight;
+          }}
+        }}
+        history.push({{role:"assistant",content:fullText}});
+      }} catch(e) {{ botDiv.classList.remove("streaming"); botDiv.innerHTML=rbFmt("Errore di connessione."); }}
+      finally {{ sendBtn.disabled=false; input.focus(); }}
+    }}
+  </script>
+</body>
+</html>"""
+    return HTMLResponse(content=html)
+
+
 @app.get("/widget/event/{event_id}", response_class=HTMLResponse)
 def page_widget_event(request: Request, event_id: str):
     result = supabase.table("events").select("*").eq("id", event_id).execute()
