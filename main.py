@@ -1455,7 +1455,8 @@ def page_widget_preview(request: Request, race_id: str):
     .rb-messages {{ flex: 1; overflow-y: auto; padding: 14px; display: flex; flex-direction: column; gap: 12px; background: #f8fafc; }}
     .rb-row {{ display: flex; align-items: flex-end; gap: 7px; }}
     .rb-row.user {{ flex-direction: row-reverse; }}
-    .rb-av {{ width: 26px; height: 26px; border-radius: 8px; background: linear-gradient(135deg,{color},#1d4ed8); display: flex; align-items: center; justify-content: center; font-size: 13px; flex-shrink: 0; }}
+    .rb-av {{ width: 30px; height: 30px; border-radius: 50%; background: linear-gradient(135deg,{color},#7c3aed); display: flex; align-items: center; justify-content: center; font-size: 16px; flex-shrink: 0; color: white; font-weight: 900; box-shadow: 0 2px 8px rgba(37,99,235,0.3); animation: rb-av-pulse 3s ease-in-out infinite; }}
+    @keyframes rb-av-pulse {{ 0%,100%{{ box-shadow: 0 2px 8px rgba(37,99,235,0.25); }} 50%{{ box-shadow: 0 3px 16px rgba(124,58,237,0.5); }} }}
     .rb-msg {{ max-width: 80%; padding: 9px 13px; font-size: 13px; line-height: 1.6; border-radius: 16px; word-wrap: break-word; }}
     .rb-msg.bot {{ background: white; color: #1e293b; border: 1px solid #e2e8f0; border-bottom-left-radius: 3px; box-shadow: 0 1px 4px rgba(0,0,0,0.05); }}
     .rb-msg.user {{ background: linear-gradient(135deg,{color},#1d4ed8); color: white; border-bottom-right-radius: 3px; }}
@@ -1526,7 +1527,7 @@ def page_widget_preview(request: Request, race_id: str):
     </div>
     <div class="rb-messages" id="rb-messages">
       <div class="rb-row">
-        <div class="rb-av">{emoji}</div>
+        <div class="rb-av">{"✦" if not logo_html.startswith("<img") else ""}{logo_html if logo_html.startswith("<img") else ""}</div>
         <div class="rb-msg bot">{welcome}</div>
       </div>
     </div>
@@ -1570,7 +1571,7 @@ def page_widget_preview(request: Request, race_id: str):
     function rbAddRow(text, type) {{
       const row = document.createElement("div");
       row.className = "rb-row" + (type === "user" ? " user" : "");
-      if (type !== "user") {{ const av = document.createElement("div"); av.className = "rb-av"; av.textContent = "{emoji}"; row.appendChild(av); }}
+      if (type !== "user") {{ const av = document.createElement("div"); av.className = "rb-av"; av.textContent = "✦"; row.appendChild(av); }}
       const div = document.createElement("div");
       div.className = "rb-msg " + (type === "user" ? "user" : type === "stream" ? "bot streaming" : "bot");
       if (type === "typing") {{ div.innerHTML = '<div class="typing-dots"><span></span><span></span><span></span></div>'; }}
@@ -1666,7 +1667,8 @@ def page_widget_preview_event(request: Request, event_id: str):
     .rb-messages {{ flex: 1; overflow-y: auto; padding: 14px; display: flex; flex-direction: column; gap: 12px; background: #f8fafc; }}
     .rb-row {{ display: flex; align-items: flex-end; gap: 7px; }}
     .rb-row.user {{ flex-direction: row-reverse; }}
-    .rb-av {{ width: 26px; height: 26px; border-radius: 8px; background: {color}; display: flex; align-items: center; justify-content: center; font-size: 13px; flex-shrink: 0; }}
+    .rb-av {{ width: 30px; height: 30px; border-radius: 50%; background: linear-gradient(135deg, {color}, #7c3aed); background-size: 200% 200%; display: flex; align-items: center; justify-content: center; font-size: 14px; flex-shrink: 0; box-shadow: 0 2px 8px rgba(37,99,235,0.3); animation: rb-av-pulse 3s ease-in-out infinite; }}
+    @keyframes rb-av-pulse {{ 0%,100%{{ box-shadow: 0 2px 8px rgba(37,99,235,0.25); }} 50%{{ box-shadow: 0 3px 16px rgba(124,58,237,0.5); }} }}
     .rb-msg {{ max-width: 80%; padding: 9px 13px; font-size: 13px; line-height: 1.6; border-radius: 16px; word-wrap: break-word; }}
     .rb-msg.bot {{ background: white; color: #1e293b; border: 1px solid #e2e8f0; border-bottom-left-radius: 3px; }}
     .rb-msg.user {{ background: {color}; color: white; border-bottom-right-radius: 3px; }}
@@ -1711,7 +1713,7 @@ def page_widget_preview_event(request: Request, event_id: str):
       <button class="rb-close" onclick="rbToggle()">✕</button>
     </div>
     <div class="rb-messages" id="rb-messages">
-      <div class="rb-row"><div class="rb-av">🏆</div><div class="rb-msg bot">Ciao! 👋 A quale gara partecipi?</div></div>
+      <div class="rb-row"><div class="rb-av" style="color:white;font-weight:900;font-size:16px;">✦</div><div class="rb-msg bot">Ciao! 👋 A quale gara partecipi?</div></div>
     </div>
     <div class="rb-quick" id="rb-race-select"></div>
     <div class="rb-input-area" id="rb-input-area" style="display:none;">
@@ -1772,7 +1774,7 @@ def page_widget_preview_event(request: Request, event_id: str):
     }}
     function rbAddRow(text, type) {{
       const row = document.createElement("div"); row.className="rb-row"+(type==="user"?" user":"");
-      if (type!=="user") {{ const av=document.createElement("div"); av.className="rb-av"; av.textContent="🏆"; row.appendChild(av); }}
+      if (type!=="user") {{ const av=document.createElement("div"); av.className="rb-av"; av.style.color="white"; av.style.fontWeight="900"; av.style.fontSize="16px"; av.textContent="✦"; row.appendChild(av); }}
       const div=document.createElement("div"); div.className="rb-msg "+(type==="user"?"user":"bot");
       div.innerHTML=rbFmt(text); row.appendChild(div); msgs.appendChild(row); msgs.scrollTop=msgs.scrollHeight; return div;
     }}
