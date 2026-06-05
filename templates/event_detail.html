@@ -313,8 +313,8 @@
               <span class="badge badge-red">No reg.</span>
             {% endif %}
             <button type="button" class="btn btn-gray" onclick="openEditRace('{{ race.id }}', '{{ race.name|replace("'", "\\'") }}', '{{ race.date or "" }}', '{{ race.location or "" }}', '{{ race.elevation_gain or "" }}', '{{ race.secretary_email or "" }}', '{{ race.length_km or "" }}', '{{ race.start_time or "" }}', '{{ race.sport_type or "" }}')">✏️ Info gara</button>
-            <a href="/dashboard/races/{{ race.id }}/locations" class="btn btn-gray">📍</a>
-            <a href="/dashboard/races/{{ race.id }}/qa" class="btn btn-gray">✍️</a>
+            <a href="/dashboard/races/{{ race.id }}/locations" class="btn btn-gray">📍 Mappa</a>
+            <a href="/dashboard/races/{{ race.id }}/qa" class="btn btn-gray">✍️ Q&A</a>
             {% if race.pdf_uploaded %}
               <form method="POST" action="/api/races/{{ race.id }}/upload" enctype="multipart/form-data" class="inline">
                 <input type="file" name="file" accept=".pdf" id="pdf-{{ race.id }}" style="display:none" onchange="this.form.submit()">
@@ -329,7 +329,7 @@
               </form>
               <button type="button" class="btn btn-gray" onclick="openTextReg('{{ race.id }}', '')">📝 Inserisci testo</button>
             {% endif %}
-            <a href="/chat/{{ race.id }}" class="btn btn-blue" target="_blank">💬</a>
+            <a href="/chat/{{ race.id }}" class="btn btn-blue" target="_blank">💬 Chat</a>
             <button type="button" class="btn btn-gray" onclick="openCustomize('{{ race.id }}', '{{ race.chatbot_name|replace("'", "\\'") if race.chatbot_name else "" }}', '{{ race.chatbot_color or "#2563eb" }}', '{{ race.welcome_message|replace("'", "\\'") if race.welcome_message else "" }}', '{{ race.chatbot_logo_url or "" }}')">🎨 Personalizza</button>
             <form method="POST" action="/api/races/{{ race.id }}/delete" class="inline">
               <input type="hidden" name="event_id" value="{{ event.id }}">
