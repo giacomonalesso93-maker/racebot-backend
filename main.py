@@ -1728,25 +1728,36 @@ def page_widget_preview_event(request: Request, event_id: str):
     let history = [];
     let RACE_ID = null;
 
-    // Mostra bottoni selezione gara
     const raceSelect = document.getElementById("rb-race-select");
-    RACES.forEach(r => {{
-      const btn = document.createElement("button");
-      btn.className = "rb-quick-btn";
-      btn.textContent = "🏁 " + r.name;
-      btn.onclick = () => selectRace(r.id, r.name);
-      raceSelect.appendChild(btn);
-    }});
 
-    function selectRace(id, name) {{
+    function selectRace(id, raceName) {{
       RACE_ID = id;
-      raceSelect.remove();
-      rbAddRow("🏁 " + name, "user");
-      rbAddRow("Perfetto! Sono pronto a rispondere a tutte le tue domande su <strong>" + name + "</strong>. Come posso aiutarti?", "bot");
+      if (raceSelect) raceSelect.remove();
       document.getElementById("rb-input-area").style.display = "flex";
       input.disabled = false;
       sendBtn.disabled = false;
       input.focus();
+    }}
+
+    if (RACES.length === 1) {{
+      // Una sola gara: salta la selezione, vai diretto alla chat
+      const r = RACES[0];
+      msgs.innerHTML = '<div class="rb-row"><div class="rb-av">🏆</div><div class="rb-msg bot">Ciao! 👋 Sono l\'assistente di <strong>' + r.name + '</strong>. Come posso aiutarti?</div></div>';
+      if (raceSelect) raceSelect.remove();
+      selectRace(r.id, r.name);
+    }} else {{
+      // Più gare: mostra selezione
+      RACES.forEach(r => {{
+        const btn = document.createElement("button");
+        btn.className = "rb-quick-btn";
+        btn.textContent = "🏁 " + r.name;
+        btn.onclick = () => {{
+          rbAddRow("🏁 " + r.name, "user");
+          rbAddRow("Perfetto! Sono pronto per le tue domande su <strong>" + r.name + "</strong>. Come posso aiutarti?", "bot");
+          selectRace(r.id, r.name);
+        }};
+        raceSelect.appendChild(btn);
+      }});
     }}
 
     function rbToggle() {{
