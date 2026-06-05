@@ -27,7 +27,7 @@ from auth import register_organizer, login_organizer, get_current_organizer
 from embeddings import process_pdf, search
 from chat import get_answer, stream_answer
 from tickets import create_ticket, notify_organizer, notify_participant, get_tickets_for_organizer, reply_to_ticket
-from emails import send_welcome_email, send_approval_email
+from emails import send_welcome_email, send_approval_email, send_password_reset_email
 from locations import add_location, get_locations, delete_location, update_location, TIPI_POSIZIONE
 from custom_qa import add_qa, get_qa, delete_qa, get_qa_context
 from plans import get_features, plan_label, plan_color, PLAN_LABELS, PLAN_ORDER, PLAN_MAX_RACES, PLAN_FEATURES
@@ -742,6 +742,65 @@ def page_login(request: Request):
 @app.get("/register", response_class=HTMLResponse)
 def page_register(request: Request):
     return templates.TemplateResponse(request=request, name="register.html")
+
+
+# ─── RECUPERO PASSWORD ────────────────────────────────────────────────────────
+
+@app.get("/forgot-password", response_class=HTMLResponse)
+def page_forgot_password(request: Request):
+    return templates.TemplateResponse(request=request, name="forgot_password.html")
+
+
+@app.post("/api/forgot-password")
+async def api_forgot_password(request: Request, email: str = Form(...)):
+    import secrets
+    from datetime import datetime, timezone, timedelta
+    result = supabase.table("organizers").select("id,name,email").eq("email", email).execute()
+    if result.data:
+        org = result.data[0]
+        token = secrets.token_urlsafe(32)
+        expires_at = (datetime.now(timezone.utc) + timedelta(minutes=30)).isoformat()
+        supabase.table("password_resets").insert({
+            "organizer_id": org["id"],
+            "token": token,
+            "expires_at": expires_at,
+        }).execute()
+        app_url = os.getenv("APP_URL", "https://app.repliq.it")
+        reset_url = f"{app_url}/reset-password/{token}"
+        send_password_reset_email(org["email"], org["name"], reset_url)
+    # Risposta sempre uguale per sicurezza (non rivela se l'email esiste)
+    return templates.TemplateResponse(request=request, name="forgot_password.html", context={"success": True})
+
+
+@app.get("/reset-password/{token}", response_class=HTMLResponse)
+def page_reset_password(request: Request, token: str):
+    from datetime import datetime, timezone
+    result = supabase.table("password_resets").select("*").eq("token", token).eq("used", False).execute()
+    if not result.data:
+        return templates.TemplateResponse(request=request, name="reset_password.html", context={"invalid": True, "token": token})
+    reset = result.data[0]
+    if datetime.now(timezone.utc).isoformat() > reset["expires_at"]:
+        return templates.TemplateResponse(request=request, name="reset_password.html", context={"invalid": True, "token": token})
+    return templates.TemplateResponse(request=request, name="reset_password.html", context={"token": token})
+
+
+@app.post("/api/reset-password/{token}")
+async def api_reset_password(request: Request, token: str, password: str = Form(...), confirm: str = Form(...)):
+    from datetime import datetime, timezone
+    from auth import hash_password
+    if password != confirm:
+        return templates.TemplateResponse(request=request, name="reset_password.html", context={"token": token, "error": "Le password non coincidono."})
+    if len(password) < 8:
+        return templates.TemplateResponse(request=request, name="reset_password.html", context={"token": token, "error": "La password deve essere di almeno 8 caratteri."})
+    result = supabase.table("password_resets").select("*").eq("token", token).eq("used", False).execute()
+    if not result.data:
+        return templates.TemplateResponse(request=request, name="reset_password.html", context={"invalid": True, "token": token})
+    reset = result.data[0]
+    if datetime.now(timezone.utc).isoformat() > reset["expires_at"]:
+        return templates.TemplateResponse(request=request, name="reset_password.html", context={"invalid": True, "token": token})
+    supabase.table("organizers").update({"password_hash": hash_password(password)}).eq("id", reset["organizer_id"]).execute()
+    supabase.table("password_resets").update({"used": True}).eq("token", token).execute()
+    return templates.TemplateResponse(request=request, name="reset_password.html", context={"success": True, "token": token})
 
 
 @app.get("/dashboard", response_class=HTMLResponse)

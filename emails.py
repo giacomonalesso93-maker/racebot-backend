@@ -212,3 +212,42 @@ def notify_participant_reply(participant_email: str, race_name: str, question: s
         })
     except Exception as e:
         print(f"[emails] Errore notify_participant_reply: {e}")
+
+
+def send_password_reset_email(email: str, name: str, reset_url: str) -> None:
+    """Email con link per reimpostare la password."""
+    content = f"""
+    <h2 style="color: #1e293b; margin: 0 0 8px; font-size: 22px;">Reimposta la tua password</h2>
+    <p style="color: #64748b; font-size: 15px; line-height: 1.6; margin: 0 0 24px;">
+      Ciao <strong>{name}</strong>, hai richiesto di reimpostare la password del tuo account Repliq.
+      Clicca il bottone qui sotto — il link è valido per <strong>30 minuti</strong>.
+    </p>
+
+    <div style="text-align: center; margin: 0 0 32px;">
+      <a href="{reset_url}"
+         style="display: inline-block; background: linear-gradient(135deg, #2563eb, #7c3aed); color: white;
+                padding: 14px 32px; border-radius: 50px; font-weight: 700; font-size: 15px;
+                text-decoration: none;">
+        Reimposta password →
+      </a>
+    </div>
+
+    <div style="background: #fef9c3; border: 1px solid #fde68a; border-radius: 12px; padding: 16px; margin: 0 0 24px;">
+      <p style="color: #92400e; font-size: 13px; margin: 0;">
+        ⚠️ Se non hai richiesto questo, ignora questa email. La tua password rimane invariata.
+      </p>
+    </div>
+
+    <p style="color: #94a3b8; font-size: 12px; margin: 0; text-align: center;">
+      Link valido fino alle {reset_url.split('?')[0]} · Repliq
+    </p>
+    """
+    try:
+        resend.Emails.send({
+            "from": EMAIL_FROM,
+            "to": [email],
+            "subject": "Reimposta la tua password Repliq",
+            "html": _base_template(content),
+        })
+    except Exception as e:
+        print(f"[emails] Errore send_password_reset_email: {e}")
