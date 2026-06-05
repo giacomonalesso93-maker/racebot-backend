@@ -1742,7 +1742,7 @@ def page_widget_preview_event(request: Request, event_id: str):
     if (RACES.length === 1) {{
       // Una sola gara: salta la selezione, vai diretto alla chat
       const r = RACES[0];
-      msgs.innerHTML = '<div class="rb-row"><div class="rb-av">🏆</div><div class="rb-msg bot">Ciao! 👋 Sono l\'assistente di <strong>' + r.name + '</strong>. Come posso aiutarti?</div></div>';
+      msgs.innerHTML = '<div class="rb-row"><div class="rb-av">🏆</div><div class="rb-msg bot">Ciao! 👋 Sono l&#39;assistente di <strong>' + r.name + '</strong>. Come posso aiutarti?</div></div>';
       if (raceSelect) raceSelect.remove();
       selectRace(r.id, r.name);
     }} else {{
