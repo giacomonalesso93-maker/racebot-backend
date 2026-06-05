@@ -378,6 +378,14 @@ def create_race(
     # Controlla limite gare per piano
     plan = organizer.get("plan") or "single"
     max_races = PLAN_MAX_RACES.get(plan)
+
+    # Piano Single: le gare devono essere sempre dentro un evento
+    if plan == "single" and not event_id:
+        return RedirectResponse(
+            url="/dashboard?error=Con+il+piano+Gara+Singola+devi+creare+prima+un+evento+e+aggiungere+la+gara+al+suo+interno.",
+            status_code=303
+        )
+
     if max_races is not None:
         current_count = len(supabase.table("races").select("id").eq("organizer_id", organizer["id"]).execute().data or [])
         if current_count >= max_races:
