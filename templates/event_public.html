@@ -5,101 +5,288 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>{{ event.name }}</title>
   <meta property="og:title" content="{{ event.name }}">
-  <meta property="og:description" content="{% if event.date %}{{ event.date }}{% endif %}{% if event.location %} · {{ event.location }}{% endif %} — Scegli la tua gara e chatta con l'assistente">
+  <meta property="og:description" content="{% if event.date %}{{ event.date }}{% endif %}{% if event.location %} · {{ event.location }}{% endif %} — Chatta con l'assistente virtuale">
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
-    body { font-family: system-ui, -apple-system, sans-serif; background: #f4f6fb; min-height: 100vh; }
+    body { font-family: system-ui, -apple-system, sans-serif; background: #f1f5f9; min-height: 100vh; color: #1e293b; }
 
+    /* HERO */
     .hero {
-      background: linear-gradient(135deg, #1e40af 0%, #2563eb 100%);
-      padding: 48px 24px 40px; text-align: center; color: white;
+      background: linear-gradient(135deg, #1e3a8a 0%, #2563eb 60%, #7c3aed 100%);
+      padding: 48px 24px 56px; text-align: center; color: white; position: relative; overflow: hidden;
     }
-    .hero h1 { font-size: 32px; font-weight: 800; letter-spacing: -0.5px; margin-bottom: 12px; }
-    .hero-meta { display: flex; justify-content: center; flex-wrap: wrap; gap: 20px; margin-bottom: 28px; }
-    .hero-meta-item { display: flex; align-items: center; gap: 6px; font-size: 15px; opacity: 0.9; }
+    .hero::before {
+      content: ''; position: absolute; inset: 0;
+      background: radial-gradient(ellipse at 20% 50%, rgba(255,255,255,0.06) 0%, transparent 60%),
+                  radial-gradient(ellipse at 80% 20%, rgba(255,255,255,0.04) 0%, transparent 50%);
+    }
+    .hero-inner { position: relative; max-width: 640px; margin: 0 auto; }
+
+    /* LOGO */
+    .hero-logo {
+      width: 80px; height: 80px; border-radius: 20px;
+      background: rgba(255,255,255,0.15); border: 2px solid rgba(255,255,255,0.3);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 36px; margin: 0 auto 20px; backdrop-filter: blur(8px);
+      overflow: hidden;
+    }
+    .hero-logo img { width: 100%; height: 100%; object-fit: contain; border-radius: 18px; }
+
+    .hero h1 { font-size: 30px; font-weight: 900; letter-spacing: -0.5px; margin-bottom: 16px; line-height: 1.15; }
+
+    /* CHIPS */
+    .hero-chips { display: flex; justify-content: center; flex-wrap: wrap; gap: 8px; margin-bottom: 28px; }
+    .chip {
+      display: inline-flex; align-items: center; gap: 6px;
+      background: rgba(255,255,255,0.15); border: 1px solid rgba(255,255,255,0.25);
+      backdrop-filter: blur(4px); border-radius: 50px;
+      padding: 6px 14px; font-size: 13px; font-weight: 600;
+    }
+
+    /* CTA chat */
     .btn-chat {
       display: inline-flex; align-items: center; gap: 8px;
-      background: white; color: #1e40af; font-size: 16px; font-weight: 700;
+      background: white; color: #1e40af; font-size: 15px; font-weight: 800;
       padding: 14px 32px; border-radius: 50px; text-decoration: none;
-      box-shadow: 0 4px 20px rgba(0,0,0,0.15); transition: transform 0.15s, box-shadow 0.15s;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.2); transition: transform 0.15s, box-shadow 0.15s;
     }
-    .btn-chat:hover { transform: translateY(-2px); box-shadow: 0 8px 28px rgba(0,0,0,0.2); }
+    .btn-chat:hover { transform: translateY(-2px); box-shadow: 0 12px 40px rgba(0,0,0,0.25); }
 
-    .container { max-width: 720px; margin: 0 auto; padding: 36px 20px 60px; }
+    /* CONTAINER */
+    .container { max-width: 720px; margin: -20px auto 0; padding: 0 20px 60px; position: relative; z-index: 1; }
 
-    .section-title { font-size: 16px; font-weight: 700; color: #111827; margin-bottom: 14px; }
+    /* WIDGET GRID */
+    .widget-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 24px; }
+    @media(max-width: 480px) { .widget-grid { grid-template-columns: 1fr; } }
 
-    .race-cards { display: flex; flex-direction: column; gap: 12px; margin-bottom: 32px; }
+    .widget-card {
+      background: white; border-radius: 16px; padding: 18px 20px;
+      box-shadow: 0 2px 12px rgba(0,0,0,0.06); border: 1px solid #f1f5f9;
+    }
+    .widget-card .wc-label { font-size: 11px; font-weight: 700; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px; }
+    .widget-card .wc-value { font-size: 22px; font-weight: 800; color: #1e293b; }
+    .widget-card .wc-sub { font-size: 12px; color: #64748b; margin-top: 2px; }
+
+    /* METEO */
+    .meteo-card {
+      background: linear-gradient(135deg, #0ea5e9, #2563eb);
+      color: white; border-radius: 16px; padding: 18px 20px;
+      box-shadow: 0 4px 16px rgba(14,165,233,0.3); grid-column: span 2;
+      display: flex; align-items: center; justify-content: space-between; gap: 16px;
+    }
+    @media(max-width: 480px) { .meteo-card { grid-column: span 1; flex-direction: column; text-align: center; } }
+    .meteo-left .wc-label { font-size: 11px; font-weight: 700; opacity: 0.75; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px; }
+    .meteo-temp { font-size: 40px; font-weight: 900; line-height: 1; }
+    .meteo-desc { font-size: 13px; opacity: 0.85; margin-top: 4px; }
+    .meteo-icon { font-size: 52px; line-height: 1; }
+    .meteo-extras { display: flex; gap: 16px; margin-top: 8px; }
+    .meteo-extra { font-size: 12px; opacity: 0.8; display: flex; align-items: center; gap: 4px; }
+    #meteo-loading { font-size: 13px; opacity: 0.8; }
+
+    /* INFO GENERALE */
+    .info-card {
+      background: white; border-radius: 16px; padding: 20px 22px; margin-bottom: 20px;
+      box-shadow: 0 2px 12px rgba(0,0,0,0.06); border: 1px solid #f1f5f9;
+    }
+    .info-card h3 { font-size: 14px; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 10px; }
+    .info-card p { font-size: 14px; color: #475569; line-height: 1.7; white-space: pre-line; }
+
+    /* RACES */
+    .section-header { font-size: 15px; font-weight: 700; color: #1e293b; margin-bottom: 12px; display: flex; align-items: center; gap: 8px; }
+    .race-cards { display: flex; flex-direction: column; gap: 10px; margin-bottom: 24px; }
     .race-card {
-      background: white; border-radius: 14px; padding: 20px 22px;
-      display: flex; align-items: center; justify-content: space-between;
+      background: white; border-radius: 14px; padding: 16px 20px;
+      display: flex; align-items: center; justify-content: space-between; gap: 12px;
       box-shadow: 0 2px 10px rgba(0,0,0,0.05); border: 1px solid #f1f5f9;
-      transition: box-shadow 0.15s, transform 0.15s;
+      transition: box-shadow 0.15s, transform 0.15s; text-decoration: none; color: inherit;
     }
     .race-card:hover { box-shadow: 0 6px 20px rgba(37,99,235,0.12); transform: translateY(-1px); }
-    .race-card-info h3 { font-size: 16px; font-weight: 700; color: #1e293b; }
-    .race-card-meta { display: flex; gap: 14px; margin-top: 5px; flex-wrap: wrap; }
-    .race-card-meta span { font-size: 13px; color: #64748b; }
-    .race-card-btn {
-      background: #2563eb; color: white; padding: 9px 18px; border-radius: 24px;
-      font-size: 13px; font-weight: 600; text-decoration: none; white-space: nowrap;
-      transition: background 0.15s;
-    }
-    .race-card-btn:hover { background: #1d4ed8; }
+    .race-emoji { font-size: 28px; flex-shrink: 0; }
+    .race-info { flex: 1; min-width: 0; }
+    .race-info h3 { font-size: 15px; font-weight: 700; color: #1e293b; margin-bottom: 4px; }
+    .race-badges { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 5px; }
+    .badge { display: inline-flex; align-items: center; gap: 3px; font-size: 12px; font-weight: 600; padding: 3px 9px; border-radius: 20px; }
+    .badge-blue { background: #eff6ff; color: #1d4ed8; }
+    .badge-green { background: #f0fdf4; color: #15803d; }
+    .badge-orange { background: #fff7ed; color: #c2410c; }
+    .badge-gray { background: #f8fafc; color: #475569; }
+    .race-arrow { color: #94a3b8; font-size: 18px; flex-shrink: 0; }
 
+    /* CTA BOTTOM */
     .cta-bottom {
-      background: linear-gradient(135deg, #eff6ff, #f0f9ff);
-      border: 1.5px solid #bfdbfe; border-radius: 16px;
-      padding: 28px; text-align: center;
+      background: linear-gradient(135deg, #1e3a8a, #2563eb);
+      border-radius: 20px; padding: 32px 28px; text-align: center; color: white;
+      box-shadow: 0 8px 32px rgba(37,99,235,0.25);
     }
-    .cta-bottom h3 { font-size: 18px; font-weight: 700; color: #1e40af; margin-bottom: 8px; }
-    .cta-bottom p { font-size: 14px; color: #475569; margin-bottom: 18px; }
+    .cta-bottom h3 { font-size: 20px; font-weight: 800; margin-bottom: 8px; }
+    .cta-bottom p { font-size: 14px; opacity: 0.8; margin-bottom: 20px; }
+    .btn-chat-white {
+      display: inline-flex; align-items: center; gap: 8px;
+      background: white; color: #1e40af; font-size: 15px; font-weight: 800;
+      padding: 13px 28px; border-radius: 50px; text-decoration: none;
+      box-shadow: 0 4px 16px rgba(0,0,0,0.15); transition: transform 0.15s;
+    }
+    .btn-chat-white:hover { transform: translateY(-1px); }
 
-    .powered { text-align: center; margin-top: 40px; font-size: 12px; color: #94a3b8; }
-    .powered a { color: #2563eb; text-decoration: none; }
+    .powered { text-align: center; margin-top: 32px; font-size: 12px; color: #94a3b8; }
+    .powered a { color: #2563eb; text-decoration: none; font-weight: 600; }
   </style>
 </head>
 <body>
 
+  <!-- HERO -->
   <div class="hero">
-    <h1>🏆 {{ event.name }}</h1>
-    <div class="hero-meta">
-      {% if event.date %}<div class="hero-meta-item">📅 {{ event.date }}</div>{% endif %}
-      {% if event.location %}<div class="hero-meta-item">📍 {{ event.location }}</div>{% endif %}
-      <div class="hero-meta-item">🏃 {{ races|length }} gare</div>
+    <div class="hero-inner">
+      <div class="hero-logo">
+        {% if event.chatbot_logo_url %}
+          <img src="{{ event.chatbot_logo_url }}" alt="{{ event.name }}">
+        {% else %}
+          {{ event.sport_type_emoji or '🏆' }}
+        {% endif %}
+      </div>
+      <h1>{{ event.name }}</h1>
+      <div class="hero-chips">
+        {% if event.sport_label %}<div class="chip">{{ event.sport_type_emoji }} {{ event.sport_label }}</div>{% endif %}
+        {% if event.date %}<div class="chip">📅 {{ event.date }}</div>{% endif %}
+        {% if event.location %}<div class="chip">📍 {{ event.location }}</div>{% endif %}
+        <div class="chip">🏁 {{ races|length }} gare</div>
+      </div>
+      <a href="/chat/event/{{ event.id }}" class="btn-chat">💬 Chatta con l'assistente virtuale</a>
     </div>
-    <a href="/chat/event/{{ event.id }}" class="btn-chat">💬 Chatta con l'assistente virtuale</a>
   </div>
 
   <div class="container">
 
-    {% if races %}
-    <div class="section-title">🏁 Le gare dell'evento</div>
-    <div class="race-cards">
-      {% for race in races %}
-      <div class="race-card">
-        <div class="race-card-info">
-          <h3>{{ race.name }}</h3>
-          <div class="race-card-meta">
-            {% if race.date %}<span>📅 {{ race.date }}</span>{% endif %}
-            {% if race.location %}<span>📍 {{ race.location }}</span>{% endif %}
-            {% if race.elevation_gain %}<span>⛰️ {{ race.elevation_gain }}</span>{% endif %}
+    <!-- WIDGET GRID: meteo + info -->
+    <div class="widget-grid" style="margin-top: 28px;">
+
+      <!-- METEO -->
+      {% if event.location %}
+      <div class="meteo-card" id="meteo-card">
+        <div class="meteo-left">
+          <div class="wc-label">Meteo · {{ event.location }}</div>
+          <div id="meteo-loading">Caricamento meteo...</div>
+          <div id="meteo-data" style="display:none;">
+            <div class="meteo-temp" id="meteo-temp">--°</div>
+            <div class="meteo-desc" id="meteo-desc">--</div>
+            <div class="meteo-extras">
+              <div class="meteo-extra">💨 <span id="meteo-wind">--</span></div>
+              <div class="meteo-extra">💧 <span id="meteo-humidity">--</span></div>
+            </div>
           </div>
         </div>
-        <a href="/p/{{ race.id }}" class="race-card-btn">Dettagli →</a>
+        <div class="meteo-icon" id="meteo-icon">🌤️</div>
       </div>
+      {% endif %}
+
+      <!-- GARE -->
+      <div class="widget-card">
+        <div class="wc-label">Gare dell'evento</div>
+        <div class="wc-value">{{ races|length }}</div>
+        <div class="wc-sub">
+          {% set total_km = namespace(v=0) %}
+          {% for r in races %}{% if r.length_km %}{% set total_km.v = total_km.v + r.length_km|float %}{% endif %}{% endfor %}
+          {% if total_km.v > 0 %}{{ total_km.v|int }} km totali{% else %}percorsi disponibili{% endif %}
+        </div>
+      </div>
+
+      <!-- SPORT -->
+      <div class="widget-card">
+        <div class="wc-label">Disciplina</div>
+        <div class="wc-value" style="font-size:28px;">{{ event.sport_type_emoji or '🏅' }}</div>
+        <div class="wc-sub">{{ event.sport_label or 'Sport' }}</div>
+      </div>
+
+    </div>
+
+    <!-- INFO GENERALE -->
+    {% if event.general_info %}
+    <div class="info-card">
+      <h3>📋 Informazioni generali</h3>
+      <p>{{ event.general_info }}</p>
+    </div>
+    {% endif %}
+
+    <!-- GARE -->
+    {% if races %}
+    <div class="section-header">🏁 Le gare dell'evento</div>
+    <div class="race-cards">
+      {% for race in races %}
+      <a href="/p/{{ race.id }}" class="race-card">
+        <div class="race-emoji">{{ race.sport_type_emoji or '🏅' }}</div>
+        <div class="race-info">
+          <h3>{{ race.name }}</h3>
+          <div class="race-badges">
+            {% if race.date %}<span class="badge badge-gray">📅 {{ race.date }}</span>{% endif %}
+            {% if race.start_time %}<span class="badge badge-gray">🕐 {{ race.start_time }}</span>{% endif %}
+            {% if race.length_km %}<span class="badge badge-blue">📏 {{ race.length_km }} km</span>{% endif %}
+            {% if race.elevation_gain %}<span class="badge badge-orange">⛰️ {{ race.elevation_gain }}</span>{% endif %}
+            {% if race.location %}<span class="badge badge-gray">📍 {{ race.location }}</span>{% endif %}
+          </div>
+        </div>
+        <div class="race-arrow">›</div>
+      </a>
       {% endfor %}
     </div>
     {% endif %}
 
+    <!-- CTA CHATBOT -->
     <div class="cta-bottom">
-      <h3>💬 Hai domande sull'evento?</h3>
-      <p>L'assistente virtuale ti aiuta a scegliere la gara giusta e risponde a tutte le tue domande su regolamento, percorso e logistica.</p>
-      <a href="/chat/event/{{ event.id }}" class="btn-chat" style="font-size:15px; padding:12px 28px;">Apri il chatbot →</a>
+      <h3>💬 Hai domande?</h3>
+      <p>L'assistente risponde H24 su regolamento, percorso, logistica e molto altro.</p>
+      <a href="/chat/event/{{ event.id }}" class="btn-chat-white">Apri il chatbot →</a>
     </div>
 
-    <div class="powered">Powered by <a href="#">Repliq</a></div>
+    <div class="powered">Powered by <a href="https://repliq.it">Repliq</a></div>
   </div>
+
+  {% if event.location %}
+  <script>
+    // Meteo via Open-Meteo (free, no API key)
+    const WMO_ICONS = {
+      0:"☀️",1:"🌤️",2:"⛅",3:"☁️",
+      45:"🌫️",48:"🌫️",
+      51:"🌦️",53:"🌦️",55:"🌧️",
+      61:"🌧️",63:"🌧️",65:"🌧️",
+      71:"🌨️",73:"🌨️",75:"❄️",
+      80:"🌧️",81:"🌧️",82:"⛈️",
+      95:"⛈️",96:"⛈️",99:"⛈️"
+    };
+    const WMO_DESC = {
+      0:"Sereno",1:"Prevalentemente sereno",2:"Parzialmente nuvoloso",3:"Nuvoloso",
+      45:"Nebbia",48:"Nebbia gelata",
+      51:"Pioggerella",53:"Pioggerella moderata",55:"Pioggerella intensa",
+      61:"Pioggia leggera",63:"Pioggia moderata",65:"Pioggia forte",
+      71:"Neve leggera",73:"Neve moderata",75:"Neve forte",
+      80:"Rovescio leggero",81:"Rovescio moderato",82:"Rovescio violento",
+      95:"Temporale",96:"Temporale con grandine",99:"Temporale forte"
+    };
+
+    async function loadMeteo() {
+      try {
+        const location = encodeURIComponent("{{ event.location }}");
+        const geoRes = await fetch(`https://geocoding-api.open-meteo.com/v1/search?name=${location}&count=1&language=it`);
+        const geoData = await geoRes.json();
+        if (!geoData.results || !geoData.results[0]) return;
+        const { latitude, longitude } = geoData.results[0];
+        const wRes = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${latitude}&longitude=${longitude}&current=temperature_2m,relative_humidity_2m,weather_code,wind_speed_10m&timezone=auto`);
+        const wData = await wRes.json();
+        const c = wData.current;
+        const code = c.weather_code;
+        document.getElementById("meteo-loading").style.display = "none";
+        document.getElementById("meteo-data").style.display = "block";
+        document.getElementById("meteo-temp").textContent = Math.round(c.temperature_2m) + "°C";
+        document.getElementById("meteo-desc").textContent = WMO_DESC[code] || "—";
+        document.getElementById("meteo-icon").textContent = WMO_ICONS[code] || "🌤️";
+        document.getElementById("meteo-wind").textContent = Math.round(c.wind_speed_10m) + " km/h";
+        document.getElementById("meteo-humidity").textContent = c.relative_humidity_2m + "%";
+      } catch(e) {
+        document.getElementById("meteo-loading").textContent = "Meteo non disponibile";
+      }
+    }
+    loadMeteo();
+  </script>
+  {% endif %}
 
 </body>
 </html>

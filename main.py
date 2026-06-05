@@ -1385,6 +1385,11 @@ def page_public_event(request: Request, event_id: str):
         raise HTTPException(status_code=404, detail="Evento non trovato")
     event = result.data[0]
     races = supabase.table("races").select("*").eq("event_id", event_id).execute().data or []
+    for race in races:
+        race["sport_type_emoji"] = SPORT_EMOJIS.get(race.get("sport_type", ""), "🏅")
+    event["sport_type_emoji"] = SPORT_EMOJIS.get(event.get("sport_type", ""), "🏅")
+    sport_labels = {"trail":"Trail Running","running":"Corsa","cycling":"Ciclismo","mtb":"MTB","triathlon":"Triathlon","ski":"Sci","ski_fondo":"Sci di Fondo","swim":"Nuoto","kayak":"Kayak","trekking":"Trekking","obstacle":"OCR","altro":"Sport"}
+    event["sport_label"] = sport_labels.get(event.get("sport_type", ""), "Sport")
     return templates.TemplateResponse(request=request, name="event_public.html", context={
         "event": event,
         "races": races,
