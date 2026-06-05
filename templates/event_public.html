@@ -262,17 +262,35 @@
       95:"Temporale",96:"Temporale con grandine",99:"Temporale forte"
     };
 
+    function meteoError() {
+      document.getElementById("meteo-loading").textContent = "Meteo non disponibile";
+      document.getElementById("meteo-icon").textContent = "🌡️";
+    }
+
     async function loadMeteo() {
       try {
-        const location = encodeURIComponent("{{ event.location }}");
-        const geoRes = await fetch(`https://geocoding-api.open-meteo.com/v1/search?name=${location}&count=1&language=it`);
-        const geoData = await geoRes.json();
-        if (!geoData.results || !geoData.results[0]) return;
-        const { latitude, longitude } = geoData.results[0];
-        const wRes = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${latitude}&longitude=${longitude}&current=temperature_2m,relative_humidity_2m,weather_code,wind_speed_10m&timezone=auto`);
+        // Prova prima con il nome completo, poi con la prima parola (città)
+        const fullLoc = "{{ event.location }}";
+        const shortLoc = fullLoc.split(/[\s,]+/)[0];
+        let lat, lon;
+
+        for (const loc of [fullLoc, shortLoc]) {
+          const geoRes = await fetch(`https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(loc)}&count=1&language=it`);
+          const geoData = await geoRes.json();
+          if (geoData.results && geoData.results[0]) {
+            lat = geoData.results[0].latitude;
+            lon = geoData.results[0].longitude;
+            break;
+          }
+        }
+
+        if (!lat) { meteoError(); return; }
+
+        const wRes = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,relative_humidity_2m,weather_code,wind_speed_10m&timezone=auto`);
         const wData = await wRes.json();
         const c = wData.current;
         const code = c.weather_code;
+
         document.getElementById("meteo-loading").style.display = "none";
         document.getElementById("meteo-data").style.display = "block";
         document.getElementById("meteo-temp").textContent = Math.round(c.temperature_2m) + "°C";
@@ -281,7 +299,7 @@
         document.getElementById("meteo-wind").textContent = Math.round(c.wind_speed_10m) + " km/h";
         document.getElementById("meteo-humidity").textContent = c.relative_humidity_2m + "%";
       } catch(e) {
-        document.getElementById("meteo-loading").textContent = "Meteo non disponibile";
+        meteoError();
       }
     }
     loadMeteo();
