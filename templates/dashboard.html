@@ -986,11 +986,11 @@
               </div>
             </div>
             <div class="race-actions">
-              <a href="/chat/{{ race.id }}" class="btn btn-blue btn-sm" target="_blank">💬</a>
-              <button class="btn btn-gray btn-sm" onclick="analyzeRace('{{ race.id }}', '{{ race.name|replace("'", "\\'") }}')" title="Suggerimenti AI">💡</button>
-              <a href="/dashboard/races/{{ race.id }}/locations" class="btn btn-gray btn-sm">📍</a>
-              <a href="/dashboard/races/{{ race.id }}/qa" class="btn btn-gray btn-sm">✍️</a>
-              <button class="btn btn-gray btn-sm" onclick="openCustomize('{{ race.id }}', '{{ race.chatbot_name|replace("'", "\\'") if race.chatbot_name else "" }}', '{{ race.chatbot_color or "#2563eb" }}', '{{ race.welcome_message|replace("'", "\\'") if race.welcome_message else "" }}', '{{ race.chatbot_logo_url or "" }}')">🎨</button>
+              <a href="/chat/{{ race.id }}" class="btn btn-blue btn-sm" target="_blank">💬 Chat</a>
+              <button class="btn btn-gray btn-sm" onclick="analyzeRace('{{ race.id }}', '{{ race.name|replace("'", "\\'") }}')">💡 Insights</button>
+              <a href="/dashboard/races/{{ race.id }}/locations" class="btn btn-gray btn-sm">📍 Mappa</a>
+              <a href="/dashboard/races/{{ race.id }}/qa" class="btn btn-gray btn-sm">✍️ Q&A</a>
+              <button class="btn btn-gray btn-sm" onclick="openCustomize('{{ race.id }}', '{{ race.chatbot_name|replace("'", "\\'") if race.chatbot_name else "" }}', '{{ race.chatbot_color or "#2563eb" }}', '{{ race.welcome_message|replace("'", "\\'") if race.welcome_message else "" }}', '{{ race.chatbot_logo_url or "" }}')">🎨 Stile</button>
               {% if race.pdf_uploaded %}
                 <form method="POST" action="/api/races/{{ race.id }}/upload" enctype="multipart/form-data" class="inline">
                   <input type="file" name="file" accept=".pdf" id="epdf-{{ race.id }}" style="display:none" onchange="this.form.submit()">
@@ -1048,13 +1048,13 @@
           </div>
         </div>
         <div class="race-actions">
-          <a href="/chat/{{ race.id }}" class="btn btn-blue" target="_blank">💬 Chatbot</a>
-          <button class="btn btn-gray" onclick="analyzeRace('{{ race.id }}', '{{ race.name|replace("'", "\\'") }}')" title="Analizza domande e ottieni suggerimenti AI">💡 Suggerimenti</button>
-          <a href="/p/{{ race.id }}" class="btn btn-gray" target="_blank">🌐</a>
-          <a href="/dashboard/races/{{ race.id }}/locations" class="btn btn-gray">📍</a>
-          <a href="/dashboard/races/{{ race.id }}/qa" class="btn btn-gray">✍️</a>
-          <button class="btn btn-gray" onclick="showEmbed('{{ race.id }}', '{{ race.name|replace("'", "\\'") }}')">🔗</button>
-          <button class="btn btn-gray" onclick="openCustomize('{{ race.id }}', '{{ race.chatbot_name|replace("'", "\\'") if race.chatbot_name else "" }}', '{{ race.chatbot_color or "#2563eb" }}', '{{ race.welcome_message|replace("'", "\\'") if race.welcome_message else "" }}', '{{ race.chatbot_logo_url or "" }}')">🎨</button>
+          <a href="/chat/{{ race.id }}" class="btn btn-blue" target="_blank">💬 Chat</a>
+          <button class="btn btn-gray" onclick="analyzeRace('{{ race.id }}', '{{ race.name|replace("'", "\\'") }}')">💡 Insights</button>
+          <a href="/p/{{ race.id }}" class="btn btn-gray" target="_blank">🌐 Pagina</a>
+          <a href="/dashboard/races/{{ race.id }}/locations" class="btn btn-gray">📍 Mappa</a>
+          <a href="/dashboard/races/{{ race.id }}/qa" class="btn btn-gray">✍️ Q&A</a>
+          <button class="btn btn-gray" onclick="showEmbed('{{ race.id }}', '{{ race.name|replace("'", "\\'") }}')">🔗 Embed</button>
+          <button class="btn btn-gray" onclick="openCustomize('{{ race.id }}', '{{ race.chatbot_name|replace("'", "\\'") if race.chatbot_name else "" }}', '{{ race.chatbot_color or "#2563eb" }}', '{{ race.welcome_message|replace("'", "\\'") if race.welcome_message else "" }}', '{{ race.chatbot_logo_url or "" }}')">🎨 Stile</button>
           {% if features.gpx_upload %}
             <form method="POST" action="/api/races/{{ race.id }}/upload-gpx" enctype="multipart/form-data" class="inline">
               <input type="file" name="file" accept=".gpx" style="display:none" id="gpx-{{ race.id }}" onchange="this.form.submit()">
