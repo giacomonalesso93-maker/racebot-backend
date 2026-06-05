@@ -375,6 +375,17 @@ def create_race(
     if not organizer:
         raise HTTPException(status_code=401, detail="Non autenticato")
 
+    # Controlla limite gare per piano
+    plan = organizer.get("plan") or "single"
+    max_races = PLAN_MAX_RACES.get(plan)
+    if max_races is not None:
+        current_count = len(supabase.table("races").select("id").eq("organizer_id", organizer["id"]).execute().data or [])
+        if current_count >= max_races:
+            return RedirectResponse(
+                url=f"/dashboard?error=Hai+raggiunto+il+limite+di+{max_races}+gara+per+il+piano+{plan_label(plan)}.+Passa+a+un+piano+superiore.",
+                status_code=303
+            )
+
     supabase.table("races").insert({
         "id": str(uuid.uuid4()),
         "organizer_id": organizer["id"],
