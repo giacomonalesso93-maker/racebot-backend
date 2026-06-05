@@ -1618,15 +1618,14 @@ def page_widget_preview_event(request: Request, event_id: str):
     if not result.data:
         raise HTTPException(status_code=404, detail="Evento non trovato")
     event = result.data[0]
-    # Prendi la prima gara dell'evento per l'API ask
-    races = supabase.table("races").select("id").eq("event_id", event_id).execute().data or []
-    first_race_id = races[0]["id"] if races else None
+    races = supabase.table("races").select("id,name").eq("event_id", event_id).execute().data or []
     color = event.get("chatbot_color") or "#2563eb"
     name = event.get("chatbot_name") or event["name"]
-    welcome = event.get("welcome_message") or f"Ciao! 👋 Sono l'assistente di <strong>{event['name']}</strong>. Come posso aiutarti?"
     logo_html = f'<img src="{event["chatbot_logo_url"]}" style="width:30px;height:30px;object-fit:contain;border-radius:6px;" alt="logo">' if event.get("chatbot_logo_url") else "🏆"
-    if not first_race_id:
-        return HTMLResponse(content=f"<p style='font-family:system-ui;padding:40px;color:#64748b;'>Nessuna gara trovata per questo evento. Aggiungi prima una gara dall'organizzatore.</p>")
+    if not races:
+        return HTMLResponse(content=f"<p style='font-family:system-ui;padding:40px;color:#64748b;'>Nessuna gara trovata. Aggiungi prima una gara dall'organizzatore.</p>")
+    import json
+    races_json = json.dumps([{"id": r["id"], "name": r["name"]} for r in races])
 
     html = f"""<!DOCTYPE html>
 <html lang="it">
@@ -1712,32 +1711,50 @@ def page_widget_preview_event(request: Request, event_id: str):
       <button class="rb-close" onclick="rbToggle()">✕</button>
     </div>
     <div class="rb-messages" id="rb-messages">
-      <div class="rb-row"><div class="rb-av">🏆</div><div class="rb-msg bot">{welcome}</div></div>
+      <div class="rb-row"><div class="rb-av">🏆</div><div class="rb-msg bot">Ciao! 👋 A quale gara partecipi?</div></div>
     </div>
-    <div class="rb-quick" id="rb-quick">
-      <button class="rb-quick-btn" onclick="rbQuick(this,'Dove parcheggio?')">🅿️ Parcheggi?</button>
-      <button class="rb-quick-btn" onclick="rbQuick(this,'Orario partenza?')">⏰ Orario?</button>
-      <button class="rb-quick-btn" onclick="rbQuick(this,'Materiale obbligatorio?')">🎒 Materiale?</button>
-    </div>
-    <div class="rb-input-area">
-      <div class="rb-input-wrap"><input type="text" id="rb-input" placeholder="Scrivi una domanda..." autocomplete="off"></div>
-      <button class="rb-send" id="rb-send" onclick="rbSend()">➤</button>
+    <div class="rb-quick" id="rb-race-select"></div>
+    <div class="rb-input-area" id="rb-input-area" style="display:none;">
+      <div class="rb-input-wrap"><input type="text" id="rb-input" placeholder="Scrivi una domanda..." autocomplete="off" disabled></div>
+      <button class="rb-send" id="rb-send" onclick="rbSend()" disabled>➤</button>
     </div>
     <div class="rb-powered">Powered by <a href="https://repliq.it" target="_blank">Repliq</a></div>
   </div>
   <script>
-    const RACE_ID = "{first_race_id}";
+    const RACES = {races_json};
     const msgs = document.getElementById("rb-messages");
     const input = document.getElementById("rb-input");
     const sendBtn = document.getElementById("rb-send");
     let history = [];
+    let RACE_ID = null;
+
+    // Mostra bottoni selezione gara
+    const raceSelect = document.getElementById("rb-race-select");
+    RACES.forEach(r => {{
+      const btn = document.createElement("button");
+      btn.className = "rb-quick-btn";
+      btn.textContent = "🏁 " + r.name;
+      btn.onclick = () => selectRace(r.id, r.name);
+      raceSelect.appendChild(btn);
+    }});
+
+    function selectRace(id, name) {{
+      RACE_ID = id;
+      raceSelect.remove();
+      rbAddRow("🏁 " + name, "user");
+      rbAddRow("Perfetto! Sono pronto a rispondere a tutte le tue domande su <strong>" + name + "</strong>. Come posso aiutarti?", "bot");
+      document.getElementById("rb-input-area").style.display = "flex";
+      input.disabled = false;
+      sendBtn.disabled = false;
+      input.focus();
+    }}
+
     function rbToggle() {{
       document.getElementById("rb-bubble").classList.toggle("open");
       document.getElementById("rb-window").classList.toggle("open");
-      if (document.getElementById("rb-window").classList.contains("open")) input.focus();
+      if (document.getElementById("rb-window").classList.contains("open") && !RACE_ID) raceSelect && raceSelect.scrollIntoView();
     }}
-    function rbQuick(btn, q) {{ const qc = document.getElementById("rb-quick"); if (qc) qc.remove(); input.value = q; rbSend(); }}
-    input.addEventListener("keydown", e => {{ if (e.key === "Enter") rbSend(); }});
+    input.addEventListener("keydown", e => {{ if (e.key === "Enter" && RACE_ID) rbSend(); }});
     function rbFmt(t) {{
       return t.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;")
         .replace(/\\n/g,"<br>").replace(/\*\*(.*?)\*\*/g,"<strong>$1</strong>");
