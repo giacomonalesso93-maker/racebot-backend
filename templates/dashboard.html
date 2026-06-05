@@ -852,6 +852,14 @@
         </form>
       </div>
 
+      {% if plan_max_races is not none %}
+      <div class="create-card" style="display:flex; flex-direction:column; justify-content:center; align-items:center; text-align:center; min-height:200px; background:#f8fafc; border: 2px dashed #e2e8f0;">
+        <div style="font-size:32px; margin-bottom:12px;">📋</div>
+        <h3 style="margin:0 0 8px; font-size:15px; color:#1e293b;">Crea prima un evento</h3>
+        <p style="font-size:13px; color:#64748b; max-width:240px; margin:0 0 16px;">Con il piano <strong>{{ plan_label }}</strong> aggiungi la tua gara all'interno di un evento.</p>
+        <div style="font-size:12px; color:#94a3b8;">← Usa il form a sinistra</div>
+      </div>
+      {% else %}
       <div class="create-card">
         <h3>🏁 Crea gara singola</h3>
         <p>Un percorso, un chatbot dedicato con link diretto per i partecipanti.</p>
@@ -918,6 +926,7 @@
           {% endif %}
         </form>
       </div>
+      {% endif %}
     </div>
 
     <!-- ── EVENTI ── -->
