@@ -464,10 +464,17 @@
       .sidebar { position: fixed; top: 0; left: 0; height: 100vh; transform: translateX(-100%); }
       .sidebar.open { transform: translateX(0); }
       .sidebar-overlay.open { display: block; }
-      .main-area { margin-left: 0; height: 100vh; }
+      .main-area { margin-left: 0; height: auto; min-height: 100vh; }
       .hamburger { display: flex; align-items: center; }
       .topbar-new { padding: 0 14px; }
-      .content-area { padding: 14px 12px 60px; }
+      .content-area { padding: 14px 12px 60px; overflow-y: auto; height: auto; }
+      .create-grid { grid-template-columns: 1fr; }
+      .form-row { grid-template-columns: 1fr; }
+      .stats-bar { grid-template-columns: repeat(2, 1fr); }
+      .event-header { flex-direction: column; align-items: flex-start; gap: 10px; }
+      .event-header-actions { flex-wrap: wrap; }
+      .race-card { flex-direction: column; align-items: flex-start; gap: 8px; }
+      .race-actions { flex-wrap: wrap; width: 100%; }
     }
   </style>
 </head>
