@@ -89,3 +89,10 @@ def search(query: str, race_id: str, top_k: int = 4) -> list[str]:
     scored.sort(key=lambda x: x[1], reverse=True)
 
     return [text for text, _ in scored[:top_k]]
+
+
+def delete_embeddings(race_id: str):
+    """Cancella il file embeddings locale di una gara (usato quando si rimuove il PDF)."""
+    store_file = _get_store_file(race_id)
+    if store_file.exists():
+        store_file.unlink()

@@ -10,6 +10,7 @@ __pycache__/
 # Database locale
 chroma_db/
 uploads/
+embeddings_store/
 
 # VS Code
 .vscode/

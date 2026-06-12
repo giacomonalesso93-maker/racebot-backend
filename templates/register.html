@@ -89,13 +89,13 @@
       <div class="form-title">Crea il tuo account</div>
       <div class="form-subtitle">Inizia la prova gratuita di 14 giorni</div>
 
-      <div class="trial-badge">✅ 14 giorni gratis — nessuna carta richiesta</div>
+      <div class="trial-badge">✅ 14 giorni gratis — nessuna carta richiesta · attivazione entro 24h</div>
 
       {% if success %}
       <div style="background:#f0fdf4;border:1px solid #bbf7d0;color:#15803d;padding:20px;border-radius:12px;text-align:center;margin-bottom:16px;">
         <div style="font-size:32px;margin-bottom:8px;">🎉</div>
         <div style="font-weight:800;font-size:16px;margin-bottom:6px;">Registrazione completata!</div>
-        <div style="font-size:14px;line-height:1.6;">Il tuo account è in attesa di approvazione.<br>Riceverai una email non appena sarà attivato.</div>
+        <div style="font-size:14px;line-height:1.6;">Il tuo account è in attesa di approvazione: <strong>ti attiviamo entro 24 ore</strong>.<br>Riceverai una email non appena sarà attivo — da quel momento partono i tuoi 14 giorni di prova.</div>
         <a href="/login" style="display:inline-block;margin-top:14px;font-size:13px;color:#15803d;font-weight:600;">← Torna al login</a>
       </div>
       {% else %}
@@ -117,7 +117,7 @@
           <input type="password" id="password" name="password" placeholder="min. 8 caratteri" required autocomplete="new-password">
         </div>
         <button type="submit" class="btn">Crea account gratuito →</button>
-        <p class="terms">Creando un account accetti i <a href="#" style="color:#94a3b8">Termini di servizio</a> e la <a href="#" style="color:#94a3b8">Privacy Policy</a>.</p>
+        <p class="terms">Creando un account accetti i <a href="https://www.repliq.it/termini" target="_blank" style="color:#94a3b8">Termini di servizio</a> e la <a href="https://www.repliq.it/privacy" target="_blank" style="color:#94a3b8">Privacy Policy</a>.</p>
       </form>
       <div class="form-footer">
         Hai già un account? <a href="/login">Accedi</a>

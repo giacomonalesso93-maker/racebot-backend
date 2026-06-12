@@ -14,6 +14,8 @@ from pathlib import Path
 from dotenv import load_dotenv
 import csv
 import io
+import time
+from collections import defaultdict, deque
 from fastapi import FastAPI, File, Form, HTTPException, UploadFile, Cookie, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse, RedirectResponse, StreamingResponse
@@ -24,7 +26,7 @@ load_dotenv(override=True)
 
 from database import supabase, create_tables
 from auth import register_organizer, login_organizer, get_current_organizer
-from embeddings import process_pdf, search
+from embeddings import process_pdf, search, delete_embeddings
 from chat import get_answer, stream_answer
 from tickets import create_ticket, notify_organizer, notify_participant, get_tickets_for_organizer, reply_to_ticket
 from emails import send_welcome_email, send_approval_email, send_password_reset_email
@@ -43,6 +45,84 @@ ADMIN_SESSIONS: set[str] = set()  # token attivi in memoria
 
 def _admin_token_valid(token: str | None) -> bool:
     return bool(token and token in ADMIN_SESSIONS)
+
+
+# ─── AUTORIZZAZIONE (ownership) ──────────────────────────────
+
+def get_owned_race(race_id: str, organizer: dict) -> dict:
+    """Restituisce la gara solo se appartiene all'organizzatore (404 altrimenti)."""
+    data = supabase.table("races").select("*").eq("id", race_id).eq("organizer_id", organizer["id"]).execute().data
+    if not data:
+        raise HTTPException(status_code=404, detail="Gara non trovata")
+    return data[0]
+
+
+def get_owned_event(event_id: str, organizer: dict) -> dict:
+    """Restituisce l'evento solo se appartiene all'organizzatore (404 altrimenti)."""
+    data = supabase.table("events").select("*").eq("id", event_id).eq("organizer_id", organizer["id"]).execute().data
+    if not data:
+        raise HTTPException(status_code=404, detail="Evento non trovato")
+    return data[0]
+
+
+def get_owned_location(location_id: str, organizer: dict) -> dict:
+    """Restituisce la posizione solo se la gara/evento padre appartiene all'organizzatore."""
+    data = supabase.table("locations").select("*").eq("id", location_id).execute().data
+    if not data:
+        raise HTTPException(status_code=404, detail="Posizione non trovata")
+    loc = data[0]
+    if loc.get("race_id"):
+        get_owned_race(loc["race_id"], organizer)
+    elif loc.get("event_id"):
+        get_owned_event(loc["event_id"], organizer)
+    else:
+        raise HTTPException(status_code=404, detail="Posizione non trovata")
+    return loc
+
+
+def _check_insight_owner(insight_id: str, organizer: dict):
+    row = supabase.table("race_insights").select("race_id").eq("id", insight_id).execute().data
+    if not row:
+        raise HTTPException(status_code=404, detail="Insight non trovato")
+    get_owned_race(row[0]["race_id"], organizer)
+
+
+def _delete_race_files(race_id: str):
+    """Rimuove embeddings locali e PDF caricato di una gara."""
+    delete_embeddings(race_id)
+    pdf_path = UPLOAD_DIR / f"{race_id}.pdf"
+    if pdf_path.exists():
+        pdf_path.unlink()
+
+
+# ─── RATE LIMITING (/api/ask) ────────────────────────────────
+
+ASK_RATE_LIMIT = 20       # richieste per finestra per IP
+ASK_RATE_WINDOW = 60      # secondi
+MAX_QUESTION_LEN = 500
+
+_RATE_BUCKETS: dict[str, deque] = defaultdict(deque)
+
+
+def _client_ip(request: Request) -> str:
+    forwarded = request.headers.get("x-forwarded-for")
+    if forwarded:
+        return forwarded.split(",")[0].strip()
+    return request.client.host if request.client else "unknown"
+
+
+def _check_rate_limit(ip: str):
+    now = time.time()
+    bucket = _RATE_BUCKETS[ip]
+    while bucket and now - bucket[0] > ASK_RATE_WINDOW:
+        bucket.popleft()
+    if len(bucket) >= ASK_RATE_LIMIT:
+        raise HTTPException(status_code=429, detail="Troppe richieste. Riprova tra un minuto.")
+    bucket.append(now)
+    if len(_RATE_BUCKETS) > 10000:
+        for key in [k for k, v in _RATE_BUCKETS.items() if not v]:
+            _RATE_BUCKETS.pop(key, None)
+
 
 # Mappa sport_type → emoji
 SPORT_EMOJIS = {
@@ -186,7 +266,7 @@ def api_login(request: Request, email: str = Form(...), password: str = Form(...
     if error == "suspended":
         return templates.TemplateResponse(request=request, name="login.html", context={"error": "Il tuo account è stato sospeso. Contatta il supporto."})
     response = RedirectResponse(url="/dashboard", status_code=303)
-    response.set_cookie(key="session", value=token, httponly=True)
+    response.set_cookie(key="session", value=token, httponly=True, secure=True, samesite="lax")
     return response
 
 
@@ -238,6 +318,7 @@ def edit_race(
     organizer = get_current_organizer(session) if session else None
     if not organizer:
         raise HTTPException(status_code=401, detail="Non autenticato")
+    get_owned_race(race_id, organizer)
     supabase.table("races").update({
         "name": name,
         "date": date or None,
@@ -267,6 +348,7 @@ def edit_event(
     organizer = get_current_organizer(session) if session else None
     if not organizer:
         raise HTTPException(status_code=401, detail="Non autenticato")
+    get_owned_event(event_id, organizer)
     supabase.table("events").update({
         "name": name,
         "date": date or None,
@@ -288,6 +370,7 @@ async def save_event_general_info(
     organizer = get_current_organizer(session) if session else None
     if not organizer:
         raise HTTPException(status_code=401, detail="Non autenticato")
+    get_owned_event(event_id, organizer)
     update_data = {
         "general_info": general_info or None,
         "secretary_location": secretary_location or None,
@@ -320,6 +403,7 @@ async def add_event_location(
     organizer = get_current_organizer(session) if session else None
     if not organizer:
         raise HTTPException(status_code=401, detail="Non autenticato")
+    get_owned_event(event_id, organizer)
     supabase.table("locations").insert({
         "id": str(uuid.uuid4()),
         "event_id": event_id,
@@ -339,6 +423,8 @@ def delete_race(race_id: str, event_id: str = Form(""), session: str = Cookie(de
     organizer = get_current_organizer(session) if session else None
     if not organizer:
         raise HTTPException(status_code=401, detail="Non autenticato")
+    get_owned_race(race_id, organizer)
+    _delete_race_files(race_id)
     supabase.table("locations").delete().eq("race_id", race_id).execute()
     supabase.table("custom_qa").delete().eq("race_id", race_id).execute()
     supabase.table("races").delete().eq("id", race_id).execute()
@@ -351,6 +437,7 @@ def delete_event(event_id: str, session: str = Cookie(default=None)):
     organizer = get_current_organizer(session) if session else None
     if not organizer:
         raise HTTPException(status_code=401, detail="Non autenticato")
+    get_owned_event(event_id, organizer)
     supabase.table("races").update({"event_id": None}).eq("event_id", event_id).execute()
     supabase.table("events").delete().eq("id", event_id).execute()
     return RedirectResponse(url="/dashboard", status_code=303)
@@ -424,6 +511,7 @@ def save_text_regulation(
     organizer = get_current_organizer(session) if session else None
     if not organizer:
         raise HTTPException(status_code=401, detail="Non autenticato")
+    get_owned_race(race_id, organizer)
     supabase.table("races").update({"text_regulation": text_regulation or None}).eq("id", race_id).execute()
     race_data = supabase.table("races").select("event_id").eq("id", race_id).execute().data
     event_id = race_data[0].get("event_id") if race_data else None
@@ -437,11 +525,13 @@ def clear_regulation(race_id: str, mode: str = Form("text"), session: str = Cook
     organizer = get_current_organizer(session) if session else None
     if not organizer:
         raise HTTPException(status_code=401, detail="Non autenticato")
+    get_owned_race(race_id, organizer)
     if mode == "text":
         supabase.table("races").update({"text_regulation": None}).eq("id", race_id).execute()
     else:
         supabase.table("races").update({"pdf_uploaded": False}).eq("id", race_id).execute()
         supabase.table("embeddings").delete().eq("race_id", race_id).execute()
+        delete_embeddings(race_id)
     race_data = supabase.table("races").select("event_id").eq("id", race_id).execute().data
     event_id = race_data[0].get("event_id") if race_data else None
     redirect = f"/dashboard/events/{event_id}" if event_id else "/dashboard"
@@ -455,6 +545,7 @@ async def upload_pdf(race_id: str, file: UploadFile = File(...), session: str = 
     organizer = get_current_organizer(session) if session else None
     if not organizer:
         raise HTTPException(status_code=401, detail="Non autenticato")
+    get_owned_race(race_id, organizer)
 
     if not file.filename.endswith(".pdf"):
         raise HTTPException(status_code=400, detail="Solo file PDF accettati")
@@ -480,6 +571,7 @@ async def upload_gpx(race_id: str, file: UploadFile = File(...), session: str = 
     organizer = get_current_organizer(session) if session else None
     if not organizer:
         raise HTTPException(status_code=401, detail="Non autenticato")
+    get_owned_race(race_id, organizer)
 
     if not file.filename.lower().endswith(".gpx"):
         raise HTTPException(status_code=400, detail="Solo file GPX accettati")
@@ -525,6 +617,12 @@ async def ask_question(
     history: str = Form(default="[]"),
     participant_email: str = Form(default=None)
 ):
+    _check_rate_limit(_client_ip(request))
+    question = question.strip()
+    if not question:
+        raise HTTPException(status_code=400, detail="Domanda vuota")
+    if len(question) > MAX_QUESTION_LEN:
+        raise HTTPException(status_code=413, detail="Domanda troppo lunga")
     result = supabase.table("races").select("*").eq("id", race_id).execute()
     if not result.data:
         raise HTTPException(status_code=404, detail="Gara non trovata")
@@ -718,6 +816,10 @@ def reply_ticket(
     if not organizer:
         raise HTTPException(status_code=401, detail="Non autenticato")
 
+    existing = supabase.table("tickets").select("race_id").eq("id", ticket_id).execute().data
+    if not existing:
+        raise HTTPException(status_code=404, detail="Ticket non trovato")
+    get_owned_race(existing[0]["race_id"], organizer)
     ticket = reply_to_ticket(ticket_id, reply)
 
     # Se il partecipante ha lasciato l'email → notificalo
@@ -857,6 +959,14 @@ def page_dashboard(request: Request, ok: str = "", session: str = Cookie(default
 
 @app.post("/api/tickets/{ticket_id}/email")
 def save_ticket_email(ticket_id: str, email: str = Form(...)):
+    email = email.strip()
+    if len(email) > 254 or "@" not in email or "." not in email.split("@")[-1]:
+        raise HTTPException(status_code=400, detail="Email non valida")
+    existing = supabase.table("tickets").select("participant_email").eq("id", ticket_id).execute().data
+    if not existing:
+        raise HTTPException(status_code=404, detail="Ticket non trovato")
+    if existing[0].get("participant_email"):
+        raise HTTPException(status_code=409, detail="Email già impostata")
     supabase.table("tickets").update({"participant_email": email}).eq("id", ticket_id).execute()
     return {"status": "ok"}
 
@@ -876,6 +986,7 @@ def create_location(
     organizer = get_current_organizer(session) if session else None
     if not organizer:
         raise HTTPException(status_code=401, detail="Non autenticato")
+    get_owned_race(race_id, organizer)
     add_location(
         race_id=race_id,
         name=name,
@@ -905,6 +1016,7 @@ def edit_location(
     organizer = get_current_organizer(session) if session else None
     if not organizer:
         raise HTTPException(status_code=401, detail="Non autenticato")
+    get_owned_location(location_id, organizer)
     update_location(
         location_id=location_id,
         name=name,
@@ -923,6 +1035,7 @@ def remove_location(location_id: str, race_id: str = Form(""), session: str = Co
     organizer = get_current_organizer(session) if session else None
     if not organizer:
         raise HTTPException(status_code=401, detail="Non autenticato")
+    get_owned_location(location_id, organizer)
     delete_location(location_id)
     redirect = f"/dashboard/races/{race_id}/locations" if race_id else "/dashboard"
     return RedirectResponse(url=redirect, status_code=303)
@@ -938,6 +1051,7 @@ def create_qa(
     organizer = get_current_organizer(session) if session else None
     if not organizer:
         raise HTTPException(status_code=401, detail="Non autenticato")
+    get_owned_race(race_id, organizer)
     add_qa(race_id, question, answer)
     return RedirectResponse(url=f"/dashboard/races/{race_id}/qa", status_code=303)
 
@@ -947,6 +1061,10 @@ def remove_qa(qa_id: str, race_id: str = Form(...), session: str = Cookie(defaul
     organizer = get_current_organizer(session) if session else None
     if not organizer:
         raise HTTPException(status_code=401, detail="Non autenticato")
+    qa_row = supabase.table("custom_qa").select("race_id").eq("id", qa_id).execute().data
+    if not qa_row:
+        raise HTTPException(status_code=404, detail="Q&A non trovata")
+    get_owned_race(qa_row[0]["race_id"], organizer)
     delete_qa(qa_id)
     return RedirectResponse(url=f"/dashboard/races/{race_id}/qa", status_code=303)
 
@@ -956,10 +1074,7 @@ def page_qa(request: Request, race_id: str, session: str = Cookie(default=None))
     organizer = get_current_organizer(session) if session else None
     if not organizer:
         return RedirectResponse(url="/login")
-    result = supabase.table("races").select("*").eq("id", race_id).execute()
-    if not result.data:
-        raise HTTPException(status_code=404)
-    race = result.data[0]
+    race = get_owned_race(race_id, organizer)
     items = get_qa(race_id)
     return templates.TemplateResponse(request=request, name="qa.html", context={
         "organizer": organizer,
@@ -977,6 +1092,7 @@ async def analyze_race_questions(
     organizer = get_current_organizer(session) if session else None
     if not organizer:
         raise HTTPException(status_code=401, detail="Non autenticato")
+    get_owned_race(race_id, organizer)
 
     # Recupera domande ultimi 30 giorni
     from datetime import datetime, timedelta
@@ -1083,6 +1199,7 @@ def get_race_insights(race_id: str, session: str = Cookie(default=None)):
     organizer = get_current_organizer(session) if session else None
     if not organizer:
         raise HTTPException(status_code=401, detail="Non autenticato")
+    get_owned_race(race_id, organizer)
     insights = supabase.table("race_insights").select("*").eq("race_id", race_id).eq("status", "pending").order("count", desc=True).execute().data or []
     return insights
 
@@ -1092,6 +1209,7 @@ def mark_insight_done(insight_id: str, session: str = Cookie(default=None)):
     organizer = get_current_organizer(session) if session else None
     if not organizer:
         raise HTTPException(status_code=401, detail="Non autenticato")
+    _check_insight_owner(insight_id, organizer)
     supabase.table("race_insights").update({"status": "done"}).eq("id", insight_id).execute()
     return {"ok": True}
 
@@ -1101,6 +1219,7 @@ def dismiss_insight(insight_id: str, session: str = Cookie(default=None)):
     organizer = get_current_organizer(session) if session else None
     if not organizer:
         raise HTTPException(status_code=401, detail="Non autenticato")
+    _check_insight_owner(insight_id, organizer)
     supabase.table("race_insights").update({"status": "dismissed"}).eq("id", insight_id).execute()
     return {"ok": True}
 
@@ -1174,6 +1293,7 @@ async def save_chatbot_settings(
     organizer = get_current_organizer(session) if session else None
     if not organizer:
         raise HTTPException(status_code=401, detail="Non autenticato")
+    get_owned_race(race_id, organizer)
 
     update_data = {
         "chatbot_name": chatbot_name or None,
@@ -1201,10 +1321,7 @@ def page_locations(request: Request, race_id: str, imported: int = 0, session: s
     organizer = get_current_organizer(session) if session else None
     if not organizer:
         return RedirectResponse(url="/login")
-    result = supabase.table("races").select("*").eq("id", race_id).execute()
-    if not result.data:
-        raise HTTPException(status_code=404)
-    race = result.data[0]
+    race = get_owned_race(race_id, organizer)
     locs = get_locations(race_id)
     gpx_track = race.get("gpx_data") or []
     gpx_points = len(gpx_track)
@@ -1383,10 +1500,7 @@ def page_event_detail(request: Request, event_id: str, session: str = Cookie(def
     organizer = get_current_organizer(session) if session else None
     if not organizer:
         return RedirectResponse(url="/login")
-    result = supabase.table("events").select("*").eq("id", event_id).execute()
-    if not result.data:
-        raise HTTPException(status_code=404)
-    event = result.data[0]
+    event = get_owned_event(event_id, organizer)
     races = supabase.table("races").select("*").eq("event_id", event_id).execute().data or []
     event_locations = supabase.table("locations").select("*").eq("event_id", event_id).execute().data or []
     org_plan = organizer.get("plan") or "single"
@@ -1931,79 +2045,6 @@ def page_widget_event(request: Request, event_id: str):
     return HTMLResponse(content=html)
 
 
-@app.get("/widget-preview/event/{event_id}", response_class=HTMLResponse)
-def page_widget_preview_event(request: Request, event_id: str):
-    result = supabase.table("events").select("*").eq("id", event_id).execute()
-    if not result.data:
-        raise HTTPException(status_code=404, detail="Evento non trovato")
-    event = result.data[0]
-    chat_url = str(request.base_url) + f"chat/event/{event_id}"
-    html = f"""<!DOCTYPE html>
-<html lang="it">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Anteprima Widget — {event['name']}</title>
-  <style>
-    * {{ box-sizing: border-box; margin: 0; padding: 0; }}
-    body {{ font-family: system-ui, sans-serif; background: #f1f5f9; }}
-    .preview-bar {{ background: #0f172a; color: white; padding: 12px 24px; display: flex; align-items: center; justify-content: space-between; position: sticky; top: 0; z-index: 100; }}
-    .preview-label {{ font-size: 12px; font-weight: 700; color: #4ade80; letter-spacing: 0.5px; text-transform: uppercase; }}
-    .preview-name {{ font-size: 14px; color: rgba(255,255,255,0.7); margin-left: 12px; }}
-    .preview-hint {{ font-size: 12px; color: rgba(255,255,255,0.5); }}
-    .fake-site {{ max-width: 900px; margin: 40px auto; padding: 0 24px; }}
-    .fake-header {{ background: white; border-radius: 12px; padding: 20px 28px; margin-bottom: 24px; display: flex; align-items: center; justify-content: space-between; box-shadow: 0 1px 4px rgba(0,0,0,0.06); }}
-    .fake-logo {{ font-size: 18px; font-weight: 800; color: #0f172a; }}
-    .fake-nav {{ display: flex; gap: 20px; }}
-    .fake-nav span {{ font-size: 13px; color: #94a3b8; }}
-    .fake-hero {{ background: linear-gradient(135deg, #1e3a8a, #2563eb); border-radius: 12px; padding: 48px 32px; text-align: center; margin-bottom: 24px; }}
-    .fake-hero h1 {{ font-size: 28px; font-weight: 800; color: white; margin-bottom: 8px; }}
-    .fake-hero p {{ color: rgba(255,255,255,0.75); font-size: 14px; }}
-    .fake-content {{ display: grid; grid-template-columns: 2fr 1fr; gap: 20px; }}
-    .fake-card {{ background: white; border-radius: 12px; padding: 24px; box-shadow: 0 1px 4px rgba(0,0,0,0.06); }}
-    .fake-card h3 {{ font-size: 14px; font-weight: 700; color: #0f172a; margin-bottom: 12px; }}
-    .fake-line {{ height: 10px; background: #f1f5f9; border-radius: 4px; margin-bottom: 8px; }}
-    .widget-iframe {{ position: fixed; bottom: 0; right: 0; width: 420px; height: 620px; border: none; z-index: 9999; border-radius: 20px 0 0 0; }}
-    @media(max-width:600px) {{ .fake-content {{ grid-template-columns: 1fr; }} .widget-iframe {{ width: 100%; border-radius: 0; }} }}
-  </style>
-</head>
-<body>
-  <div class="preview-bar">
-    <div style="display:flex;align-items:center;">
-      <div class="preview-label">👁️ Anteprima widget</div>
-      <div class="preview-name">{event['name']}</div>
-    </div>
-    <div class="preview-hint">La bolla blu in basso a destra è il tuo chatbot</div>
-  </div>
-  <div class="fake-site">
-    <div class="fake-header">
-      <div class="fake-logo">🏔️ ASD Trail Running</div>
-      <div class="fake-nav"><span>Home</span><span>Gare</span><span>Info</span><span>Contatti</span></div>
-    </div>
-    <div class="fake-hero">
-      <h1>{event['name']}</h1>
-      <p>Benvenuto sulla pagina ufficiale dell'evento — il chatbot risponde a tutte le tue domande</p>
-    </div>
-    <div class="fake-content">
-      <div class="fake-card">
-        <h3>Informazioni evento</h3>
-        <div class="fake-line" style="width:80%"></div>
-        <div class="fake-line" style="width:60%"></div>
-        <div class="fake-line" style="width:70%"></div>
-      </div>
-      <div class="fake-card">
-        <h3>Come arrivare</h3>
-        <div class="fake-line"></div>
-        <div class="fake-line" style="width:75%"></div>
-      </div>
-    </div>
-  </div>
-  <iframe src="{str(request.base_url)}widget/event/{event_id}" class="widget-iframe" title="Repliq Widget"></iframe>
-</body>
-</html>"""
-    return HTMLResponse(content=html)
-
-
 @app.get("/chat/{race_id}", response_class=HTMLResponse)
 def page_chat(request: Request, race_id: str, session: str = Cookie(default=None)):
     result = supabase.table("races").select("*").eq("id", race_id).execute()
@@ -2052,7 +2093,7 @@ def admin_login_post(
     token = str(uuid.uuid4())
     ADMIN_SESSIONS.add(token)
     response = RedirectResponse(url="/admin", status_code=303)
-    response.set_cookie("admin_session", token, httponly=True, samesite="lax")
+    response.set_cookie("admin_session", token, httponly=True, secure=True, samesite="lax")
     return response
 
 

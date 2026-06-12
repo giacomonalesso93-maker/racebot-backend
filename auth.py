@@ -1,5 +1,10 @@
 """
 auth.py — Gestione login, registrazione e sessioni tramite Supabase
+
+Sicurezza:
+- Password: scrypt con salt casuale (stdlib, nessuna dipendenza).
+  Gli hash legacy SHA-256 vengono verificati e migrati automaticamente al login.
+- Sessioni: token firmati HMAC-SHA256 con SECRET_KEY — non falsificabili.
 """
 
 import os
@@ -7,31 +12,73 @@ import uuid
 import hashlib
 import hmac
 import base64
+import secrets
 from dotenv import load_dotenv
 from database import supabase
 
 load_dotenv()
 
+SECRET_KEY = os.getenv("SECRET_KEY", "")
+if not SECRET_KEY:
+    raise RuntimeError("SECRET_KEY mancante nel .env — necessaria per firmare le sessioni")
+
+# ─── PASSWORD ────────────────────────────────────────────────
+
+_SCRYPT_N, _SCRYPT_R, _SCRYPT_P = 2**14, 8, 1
+
 
 def hash_password(password: str) -> str:
-    return hashlib.sha256(password.encode()).hexdigest()
+    """Hash scrypt con salt casuale. Formato: scrypt$<salt_hex>$<hash_hex>"""
+    salt = secrets.token_bytes(16)
+    digest = hashlib.scrypt(
+        password.encode(), salt=salt,
+        n=_SCRYPT_N, r=_SCRYPT_R, p=_SCRYPT_P,
+    )
+    return f"scrypt${salt.hex()}${digest.hex()}"
 
 
 def verify_password(password: str, password_hash: str) -> bool:
-    return hmac.compare_digest(hash_password(password), password_hash)
+    if password_hash.startswith("scrypt$"):
+        try:
+            _, salt_hex, digest_hex = password_hash.split("$")
+            digest = hashlib.scrypt(
+                password.encode(), salt=bytes.fromhex(salt_hex),
+                n=_SCRYPT_N, r=_SCRYPT_R, p=_SCRYPT_P,
+            )
+            return hmac.compare_digest(digest.hex(), digest_hex)
+        except Exception:
+            return False
+    # Legacy: SHA-256 senza salt (account creati prima della migrazione)
+    legacy = hashlib.sha256(password.encode()).hexdigest()
+    return hmac.compare_digest(legacy, password_hash)
+
+
+def _is_legacy_hash(password_hash: str) -> bool:
+    return not password_hash.startswith("scrypt$")
+
+
+# ─── SESSIONI (token firmati) ────────────────────────────────
+
+def _sign(data: str) -> str:
+    return hmac.new(SECRET_KEY.encode(), data.encode(), hashlib.sha256).hexdigest()
 
 
 def create_session_token(organizer_id: str) -> str:
-    data = f"{organizer_id}"
-    return base64.b64encode(data.encode()).decode()
+    payload = base64.urlsafe_b64encode(organizer_id.encode()).decode()
+    return f"{payload}.{_sign(payload)}"
 
 
 def decode_session_token(token: str) -> str | None:
     try:
-        return base64.b64decode(token.encode()).decode()
+        payload, signature = token.rsplit(".", 1)
+        if not hmac.compare_digest(_sign(payload), signature):
+            return None
+        return base64.urlsafe_b64decode(payload.encode()).decode()
     except Exception:
         return None
 
+
+# ─── ORGANIZZATORI ───────────────────────────────────────────
 
 def register_organizer(email: str, password: str, name: str) -> dict | None:
     organizer_id = str(uuid.uuid4())
@@ -58,6 +105,11 @@ def login_organizer(email: str, password: str) -> tuple[str | None, str | None]:
     organizer = result.data[0]
     if not verify_password(password, organizer["password_hash"]):
         return None, "wrong_credentials"
+    # Migrazione automatica: aggiorna gli hash legacy al primo login riuscito
+    if _is_legacy_hash(organizer["password_hash"]):
+        supabase.table("organizers").update(
+            {"password_hash": hash_password(password)}
+        ).eq("id", organizer["id"]).execute()
     status = organizer.get("status", "active")
     if status == "pending":
         return None, "pending"
