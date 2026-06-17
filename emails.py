@@ -214,6 +214,41 @@ def notify_participant_reply(participant_email: str, race_name: str, question: s
         print(f"[emails] Errore notify_participant_reply: {e}")
 
 
+def notify_admin_new_registration(organizer_name: str, organizer_email: str) -> None:
+    """Notifica a info@repliq.it quando un nuovo organizzatore si registra."""
+    content = f"""
+    <h2 style="color: #1e293b; margin: 0 0 8px; font-size: 22px;">Nuova registrazione 🎉</h2>
+    <p style="color: #64748b; font-size: 15px; line-height: 1.6; margin: 0 0 24px;">
+      Un nuovo organizzatore si è registrato su Repliq e attende approvazione.
+    </p>
+
+    <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 20px; margin: 0 0 28px;">
+      <p style="color: #475569; font-size: 13px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; margin: 0 0 4px;">Nome</p>
+      <p style="color: #1e293b; font-size: 15px; font-weight: 600; margin: 0 0 16px;">{organizer_name}</p>
+      <p style="color: #475569; font-size: 13px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; margin: 0 0 4px;">Email</p>
+      <p style="color: #1e293b; font-size: 15px; margin: 0;">{organizer_email}</p>
+    </div>
+
+    <div style="text-align: center; margin: 0 0 24px;">
+      <a href="https://admin.repliq.it"
+         style="display: inline-block; background: linear-gradient(135deg, #2563eb, #7c3aed); color: white;
+                padding: 14px 32px; border-radius: 50px; font-weight: 700; font-size: 15px;
+                text-decoration: none;">
+        Approva dal pannello admin →
+      </a>
+    </div>
+    """
+    try:
+        resend.Emails.send({
+            "from": EMAIL_FROM,
+            "to": ["info@repliq.it"],
+            "subject": f"Nuova registrazione: {organizer_name} ({organizer_email})",
+            "html": _base_template(content),
+        })
+    except Exception as e:
+        print(f"[emails] Errore notify_admin_new_registration: {e}")
+
+
 def send_password_reset_email(email: str, name: str, reset_url: str) -> None:
     """Email con link per reimpostare la password."""
     content = f"""

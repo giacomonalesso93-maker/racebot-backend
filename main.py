@@ -29,7 +29,7 @@ from auth import register_organizer, login_organizer, get_current_organizer
 from embeddings import process_pdf, search, delete_embeddings
 from chat import get_answer, stream_answer
 from tickets import create_ticket, notify_organizer, notify_participant, get_tickets_for_organizer, reply_to_ticket
-from emails import send_welcome_email, send_approval_email, send_password_reset_email
+from emails import send_welcome_email, send_approval_email, send_password_reset_email, notify_admin_new_registration
 from locations import add_location, get_locations, delete_location, update_location, TIPI_POSIZIONE
 from custom_qa import add_qa, get_qa, delete_qa, get_qa_context
 from plans import get_features, plan_label, plan_color, PLAN_LABELS, PLAN_ORDER, PLAN_MAX_RACES, PLAN_FEATURES
@@ -251,6 +251,7 @@ def api_register(request: Request, email: str = Form(...), password: str = Form(
         if not organizer:
             return templates.TemplateResponse(request=request, name="register.html", context={"error": "Errore durante la registrazione. Riprova."})
         send_welcome_email(email, name)
+        notify_admin_new_registration(name, email)
         return templates.TemplateResponse(request=request, name="register.html", context={"success": True})
     except Exception as e:
         return templates.TemplateResponse(request=request, name="register.html", context={"error": "Errore durante la registrazione. Riprova."})
