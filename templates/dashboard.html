@@ -999,7 +999,7 @@
                   <button type="button" class="btn btn-gray btn-sm" onclick="document.getElementById('epdf-{{ race.id }}').click()">📄 Sostituisci</button>
                 </form>
               {% elif race.text_regulation %}
-                <button type="button" class="btn btn-gray btn-sm" onclick="openTextReg('{{ race.id }}', {{ race.text_regulation | tojson }})">📝 Modifica testo</button>
+                <button type="button" class="btn btn-gray btn-sm" data-race-id="{{ race.id }}" data-text-reg="{{ race.text_regulation | e }}" onclick="openTextRegBtn(this)">📝 Modifica testo</button>
               {% else %}
                 <form method="POST" action="/api/races/{{ race.id }}/upload" enctype="multipart/form-data" class="inline">
                   <input type="file" name="file" accept=".pdf" id="epdf-{{ race.id }}" style="display:none" onchange="this.form.submit()">
@@ -1074,7 +1074,7 @@
               <button type="button" class="btn btn-gray" onclick="document.getElementById('file-{{ race.id }}').click()">📄 Sostituisci PDF</button>
             </form>
           {% elif race.text_regulation %}
-            <button type="button" class="btn btn-gray" onclick="openTextReg('{{ race.id }}', {{ race.text_regulation | tojson }})">📝 Modifica testo</button>
+            <button type="button" class="btn btn-gray" data-race-id="{{ race.id }}" data-text-reg="{{ race.text_regulation | e }}" onclick="openTextRegBtn(this)">📝 Modifica testo</button>
           {% else %}
             <form method="POST" action="/api/races/{{ race.id }}/upload" enctype="multipart/form-data" class="inline">
               <input type="file" name="file" accept=".pdf" style="display:none" id="file-{{ race.id }}" onchange="this.form.submit()">
@@ -1390,6 +1390,12 @@
       document.getElementById("text-reg-form").action = `/api/races/${raceId}/text-regulation`;
       document.getElementById("text-reg-content").value = currentText || "";
       document.getElementById("text-reg-modal").style.display = "flex";
+    }
+
+    function openTextRegBtn(btn) {
+      const raceId = btn.dataset.raceId;
+      const currentText = btn.dataset.textReg || "";
+      openTextReg(raceId, currentText);
     }
 
     function openEditEvent(id, name, date, location, sportType) {
