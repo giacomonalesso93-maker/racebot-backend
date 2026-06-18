@@ -477,6 +477,77 @@
       {val:"altro",label:"🏅 Altro"}
     ];
 
+    // ── Races disponibili (per banner post-creazione) ──────
+    var _availableRaces = {{ races | tojson }};
+
+    // Controlla al caricamento se ci sono posizioni gara in attesa
+    window.addEventListener('DOMContentLoaded', function() {
+      var pending = sessionStorage.getItem('pending_race_locs_' + _currentEventId);
+      if (pending && window.location.search.includes('ok=')) {
+        try {
+          var locs = JSON.parse(pending);
+          if (locs && locs.length > 0) showPendingRaceLocsBanner(locs);
+        } catch(e) {}
+      }
+    });
+
+    function memorizeRaceLocations() {
+      var selected = [];
+      document.querySelectorAll('[data-race-loc-idx]').forEach(function(cb) {
+        if (cb.checked) {
+          var idx = parseInt(cb.getAttribute('data-race-loc-idx'));
+          selected.push(_importedLocations[idx]);
+        }
+      });
+      if (!selected.length) return;
+      sessionStorage.setItem('pending_race_locs_' + _currentEventId, JSON.stringify(selected));
+      var s = document.getElementById('import-race-loc-status');
+      s.textContent = '✅ Memorizzate ' + selected.length + ' posizioni — crea la gara e appariranno automaticamente.';
+    }
+
+    function showPendingRaceLocsBanner(locs) {
+      if (!_availableRaces || !_availableRaces.length) return;
+      var banner = document.createElement('div');
+      banner.id = 'pending-race-locs-banner';
+      banner.style.cssText = 'background:#fff7ed;border:2px solid #fb923c;border-radius:12px;padding:16px 18px;margin-bottom:18px;';
+      var raceOptions = _availableRaces.map(function(r) {
+        return '<option value="' + r.id + '">' + r.name + '</option>';
+      }).join('');
+      banner.innerHTML = '<p style="font-size:13px;font-weight:700;color:#c2410c;margin-bottom:8px;">🏁 Hai ' + locs.length + ' posizioni gara memorizzate — scegli a quale gara associarle:</p>' +
+        '<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">' +
+        '<select id="pending-race-select" style="padding:8px 12px;border:1.5px solid #fdba74;border-radius:8px;font-size:13px;outline:none;background:white;">' + raceOptions + '</select>' +
+        '<button type="button" onclick="savePendingRaceLocs(' + JSON.stringify(locs).replace(/"/g, '&quot;') + ')" style="padding:8px 16px;background:#ea580c;color:white;border:none;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;">Associa posizioni</button>' +
+        '<button type="button" onclick="this.closest(\'#pending-race-locs-banner\').remove();sessionStorage.removeItem(\'pending_race_locs_\'+_currentEventId)" style="padding:8px 12px;background:#f1f5f9;border:1px solid #e2e8f0;border-radius:8px;font-size:13px;color:#64748b;cursor:pointer;">Ignora</button>' +
+        '</div>' +
+        '<span id="pending-race-save-status" style="font-size:12px;color:#92400e;display:block;margin-top:6px;"></span>';
+      var container = document.querySelector('.container');
+      container.insertBefore(banner, container.firstChild);
+    }
+
+    async function savePendingRaceLocs(locs) {
+      var raceId = document.getElementById('pending-race-select').value;
+      var status = document.getElementById('pending-race-save-status');
+      status.textContent = 'Salvataggio…';
+      var saved = 0;
+      for (var i = 0; i < locs.length; i++) {
+        var loc = locs[i];
+        try {
+          var fd = new FormData();
+          fd.append('name', loc.name || 'Posizione');
+          fd.append('tipo', loc.type || 'altro');
+          fd.append('notes', loc.notes || '');
+          fd.append('google_maps_url', loc.google_maps_url || '');
+          fd.append('lat', loc.lat != null ? loc.lat : '');
+          fd.append('lng', loc.lng != null ? loc.lng : '');
+          await fetch('/api/races/' + raceId + '/locations', { method: 'POST', body: fd, redirect: 'manual' });
+          saved++;
+        } catch(e) {}
+      }
+      sessionStorage.removeItem('pending_race_locs_' + _currentEventId);
+      status.textContent = '✅ ' + saved + ' posizioni associate alla gara. ';
+      status.innerHTML += '<a href="/dashboard/races/' + raceId + '/locations" style="color:#c2410c;font-weight:600;">Vedi posizioni →</a>';
+    }
+
     function switchAddTab(tab) {
       var isUrl = tab === 'url';
       document.getElementById('panel-url').style.display = isUrl ? 'block' : 'none';
@@ -596,13 +667,20 @@
       // ── Sezione GARA ───────────────────────────────────────
       if (raceLocs.length > 0) {
         html += '<div style="background:#fff7ed;border:1px solid #fdba74;border-radius:10px;padding:14px 16px;">';
-        html += '<p style="font-size:13px;font-weight:700;color:#c2410c;margin-bottom:6px;">🏁 Posizioni gara — da aggiungere manualmente dopo aver creato la gara</p>';
-        html += '<p style="font-size:12px;color:#92400e;margin-bottom:10px;">Partenza, arrivo, ristori e punti medici sono specifici per ogni percorso. Aggiungili dalla pagina della gara una volta creata.</p>';
-        raceLocs.forEach(function(loc) {
+        html += '<p style="font-size:13px;font-weight:700;color:#c2410c;margin-bottom:6px;">🏁 Posizioni gara — specifiche per ogni percorso (partenza, arrivo, ristori)</p>';
+        html += '<p style="font-size:12px;color:#92400e;margin-bottom:10px;">Seleziona quelle da salvare, poi clicca "Memorizza". Dopo aver creato la gara apparirà un banner per associarle.</p>';
+        raceLocs.forEach(function(loc, i) {
+          var realIdx = _importedLocations.indexOf(loc);
           var geocoded = loc.lat ? ' 🗺️' : '';
-          html += '<div style="font-size:13px;color:#374151;margin-bottom:6px;">• <strong>' + (loc.name || 'Posizione') + '</strong> <span style="color:#94a3b8;">(' + (loc.type || 'altro') + ')</span>' + geocoded +
-            (loc.address ? ' — <span style="color:#64748b;">' + loc.address + '</span>' : '') + '</div>';
+          html += '<label style="display:flex;align-items:flex-start;gap:8px;margin-bottom:8px;font-size:13px;color:#374151;cursor:pointer;">' +
+            '<input type="checkbox" checked data-race-loc-idx="' + realIdx + '" style="margin-top:2px;"> ' +
+            '<span><strong>' + (loc.name || 'Posizione') + '</strong> <span style="color:#94a3b8;">(' + (loc.type || 'altro') + ')</span>' + geocoded +
+            (loc.address ? '<br><span style="color:#64748b;font-size:12px;">' + loc.address + '</span>' : '') +
+            (loc.notes ? '<br><span style="color:#64748b;font-size:12px;">' + loc.notes + '</span>' : '') +
+            '</span></label>';
         });
+        html += '<button type="button" onclick="memorizeRaceLocations()" style="margin-top:6px;padding:8px 16px;background:#ea580c;color:white;border:none;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;">📥 Memorizza — associa dopo la creazione gara</button>';
+        html += '<span id="import-race-loc-status" style="font-size:12px;color:#92400e;margin-left:10px;"></span>';
         html += '</div>';
       }
 
