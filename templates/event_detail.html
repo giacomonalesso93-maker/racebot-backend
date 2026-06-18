@@ -551,34 +551,60 @@
       }
     }
 
+    var RACE_LOCATION_TYPES = ['partenza', 'arrivo', 'ristoro', 'punto_medico'];
+
     function renderImportedLocations() {
       var existing = document.getElementById('imported-locations-panel');
       if (existing) existing.remove();
 
+      var eventLocs = _importedLocations.filter(function(l) { return RACE_LOCATION_TYPES.indexOf(l.type) === -1; });
+      var raceLocs  = _importedLocations.filter(function(l) { return RACE_LOCATION_TYPES.indexOf(l.type) !== -1; });
+
       var panel = document.createElement('div');
       panel.id = 'imported-locations-panel';
-      panel.style.cssText = 'background:#f0fdf4;border:1px solid #86efac;border-radius:10px;padding:14px 16px;margin:12px 0;';
+      panel.style.cssText = 'margin:12px 0;';
 
-      var html = '<p style="font-size:13px;font-weight:700;color:#166534;margin-bottom:10px;">📍 Posizioni trovate dall\'AI — seleziona quelle da importare:</p>';
+      var html = '';
 
-      if (_importedGeneralInfo) {
-        html += '<label style="display:flex;align-items:flex-start;gap:8px;margin-bottom:8px;font-size:13px;color:#374151;cursor:pointer;">' +
-          '<input type="checkbox" checked data-loc-idx="general" style="margin-top:2px;"> ' +
-          '<span><strong>Info generali evento</strong><br><span style="color:#64748b;font-size:12px;">' + _importedGeneralInfo.substring(0, 120) + '…</span></span></label>';
+      // ── Sezione EVENTO ─────────────────────────────────────
+      if (_importedGeneralInfo || eventLocs.length > 0) {
+        html += '<div style="background:#f0fdf4;border:1px solid #86efac;border-radius:10px;padding:14px 16px;margin-bottom:10px;">';
+        html += '<p style="font-size:13px;font-weight:700;color:#166534;margin-bottom:10px;">🏟️ Posizioni evento — salvate subito sull\'evento (condivise da tutte le gare)</p>';
+
+        if (_importedGeneralInfo) {
+          html += '<label style="display:flex;align-items:flex-start;gap:8px;margin-bottom:8px;font-size:13px;color:#374151;cursor:pointer;">' +
+            '<input type="checkbox" checked data-loc-idx="general" style="margin-top:2px;"> ' +
+            '<span><strong>Info generali evento</strong><br><span style="color:#64748b;font-size:12px;">' + _importedGeneralInfo.substring(0, 120) + '…</span></span></label>';
+        }
+
+        eventLocs.forEach(function(loc, i) {
+          var realIdx = _importedLocations.indexOf(loc);
+          var geocoded = loc.lat ? ' 🗺️' : '';
+          html += '<label style="display:flex;align-items:flex-start;gap:8px;margin-bottom:8px;font-size:13px;color:#374151;cursor:pointer;">' +
+            '<input type="checkbox" checked data-loc-idx="' + realIdx + '" style="margin-top:2px;"> ' +
+            '<span><strong>' + (loc.name || 'Posizione') + '</strong> <span style="color:#94a3b8;">(' + (loc.type || 'altro') + ')</span>' + geocoded +
+            (loc.address ? '<br><span style="color:#64748b;font-size:12px;">' + loc.address + '</span>' : '') +
+            (loc.notes ? '<br><span style="color:#64748b;font-size:12px;">' + loc.notes + '</span>' : '') +
+            '</span></label>';
+        });
+
+        html += '<button type="button" onclick="saveImportedLocations()" style="margin-top:6px;padding:8px 16px;background:#16a34a;color:white;border:none;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;">Salva sull\'evento</button>';
+        html += '<span id="import-loc-save-status" style="font-size:12px;color:#64748b;margin-left:10px;"></span>';
+        html += '</div>';
       }
 
-      _importedLocations.forEach(function(loc, i) {
-        var geocoded = loc.lat ? ' 🗺️' : '';
-        html += '<label style="display:flex;align-items:flex-start;gap:8px;margin-bottom:8px;font-size:13px;color:#374151;cursor:pointer;">' +
-          '<input type="checkbox" checked data-loc-idx="' + i + '" style="margin-top:2px;"> ' +
-          '<span><strong>' + (loc.name || 'Posizione') + '</strong> <span style="color:#94a3b8;">(' + (loc.type || 'altro') + ')</span>' + geocoded +
-          (loc.address ? '<br><span style="color:#64748b;font-size:12px;">' + loc.address + '</span>' : '') +
-          (loc.notes ? '<br><span style="color:#64748b;font-size:12px;">' + loc.notes + '</span>' : '') +
-          '</span></label>';
-      });
-
-      html += '<button type="button" onclick="saveImportedLocations()" style="margin-top:6px;padding:8px 16px;background:#16a34a;color:white;border:none;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;">Salva posizioni selezionate</button>';
-      html += '<span id="import-loc-save-status" style="font-size:12px;color:#64748b;margin-left:10px;"></span>';
+      // ── Sezione GARA ───────────────────────────────────────
+      if (raceLocs.length > 0) {
+        html += '<div style="background:#fff7ed;border:1px solid #fdba74;border-radius:10px;padding:14px 16px;">';
+        html += '<p style="font-size:13px;font-weight:700;color:#c2410c;margin-bottom:6px;">🏁 Posizioni gara — da aggiungere manualmente dopo aver creato la gara</p>';
+        html += '<p style="font-size:12px;color:#92400e;margin-bottom:10px;">Partenza, arrivo, ristori e punti medici sono specifici per ogni percorso. Aggiungili dalla pagina della gara una volta creata.</p>';
+        raceLocs.forEach(function(loc) {
+          var geocoded = loc.lat ? ' 🗺️' : '';
+          html += '<div style="font-size:13px;color:#374151;margin-bottom:6px;">• <strong>' + (loc.name || 'Posizione') + '</strong> <span style="color:#94a3b8;">(' + (loc.type || 'altro') + ')</span>' + geocoded +
+            (loc.address ? ' — <span style="color:#64748b;">' + loc.address + '</span>' : '') + '</div>';
+        });
+        html += '</div>';
+      }
 
       panel.innerHTML = html;
       var banner = document.getElementById('import-ai-banner');
