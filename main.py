@@ -491,6 +491,10 @@ Campi da estrarre (usa null se non trovato):
 - secretary_email: email segreteria/info
 - sport_type: uno tra running, trail, cycling, mtb, triathlon, ski, trekking, obstacle, altro
 - notes: eventuali note utili (max 200 caratteri)
+- general_info: testo con info logistiche generali dell'evento (come arrivare, hotel consigliati, ecc.) max 400 caratteri, null se non trovato
+- locations: lista di posizioni fisiche trovate (segreteria, parcheggi, partenza, arrivo, hotel, expo, ecc.).
+  Ogni elemento ha: name (stringa), type (uno tra: segreteria, parcheggio, hotel, ritiro_sacche, deposito_sacche, expo, partenza, arrivo, ristoro, punto_medico, altro), address (indirizzo completo come stringa, null se non trovato), notes (note brevi, null se non trovato).
+  Restituisci lista vuota [] se non trovi posizioni.
 
 Testo della pagina:
 {text}
@@ -500,7 +504,7 @@ Rispondi solo con JSON:"""
     try:
         msg = client_ai.messages.create(
             model="claude-haiku-4-5-20251001",
-            max_tokens=512,
+            max_tokens=1024,
             messages=[{"role": "user", "content": prompt}]
         )
         raw = msg.content[0].text.strip()
@@ -513,6 +517,27 @@ Rispondi solo con JSON:"""
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Errore analisi AI: {e}")
 
+    # 4. Geocodifica indirizzi trovati con Nominatim
+    locations = data.get("locations") or []
+    async with httpx.AsyncClient(timeout=10) as geo_client:
+        for loc in locations:
+            addr = loc.get("address")
+            if addr:
+                try:
+                    geo_resp = await geo_client.get(
+                        "https://nominatim.openstreetmap.org/search",
+                        params={"format": "json", "q": addr, "limit": 1},
+                        headers={"User-Agent": "Repliq/1.0"}
+                    )
+                    geo_data = geo_resp.json()
+                    if geo_data:
+                        loc["lat"] = float(geo_data[0]["lat"])
+                        loc["lng"] = float(geo_data[0]["lon"])
+                        loc["google_maps_url"] = f"https://www.google.com/maps?q={loc['lat']},{loc['lng']}"
+                except Exception:
+                    pass  # geocoding fallisce silenziosamente
+
+    data["locations"] = locations
     return data
 
 

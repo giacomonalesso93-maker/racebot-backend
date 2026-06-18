@@ -489,6 +489,10 @@
         : 'flex:1;padding:9px;border-radius:9px;font-size:13px;font-weight:600;cursor:pointer;border:2px solid #2563eb;background:#2563eb;color:white;';
     }
 
+    var _importedLocations = [];
+    var _importedGeneralInfo = null;
+    var _currentEventId = '{{ event.id }}';
+
     async function importFromUrl() {
       var url = document.getElementById('import-url-input').value.trim();
       if (!url) return;
@@ -508,7 +512,8 @@
           throw new Error(err.detail || 'Errore server');
         }
         var data = await resp.json();
-        // Pre-compila il form manuale
+
+        // Pre-compila il form gara
         if (data.name) document.getElementById('new-race-name').value = data.name;
         if (data.date) document.getElementById('new-race-date').value = data.date;
         if (data.start_time) document.getElementById('new-race-start-time').value = data.start_time;
@@ -522,7 +527,19 @@
             opt.classList.toggle('selected', opt.dataset.val === sportVal);
           });
         }
-        // Mostra banner AI e passa al form manuale
+
+        // Salva posizioni e general_info per conferma
+        _importedLocations = data.locations || [];
+        _importedGeneralInfo = data.general_info || null;
+
+        // Mostra sezione posizioni trovate se presenti
+        if (_importedLocations.length > 0 || _importedGeneralInfo) {
+          renderImportedLocations();
+        }
+
+        status.style.color = '#16a34a';
+        var found = _importedLocations.length;
+        status.textContent = '✅ Analisi completata' + (found ? ' — ' + found + ' posizioni trovate' : '') + '. Controlla i dati e salva.';
         document.getElementById('import-ai-banner').style.display = 'block';
         switchAddTab('manual');
       } catch(e) {
@@ -532,6 +549,79 @@
         btn.disabled = false;
         btn.textContent = 'Analizza';
       }
+    }
+
+    function renderImportedLocations() {
+      var existing = document.getElementById('imported-locations-panel');
+      if (existing) existing.remove();
+
+      var panel = document.createElement('div');
+      panel.id = 'imported-locations-panel';
+      panel.style.cssText = 'background:#f0fdf4;border:1px solid #86efac;border-radius:10px;padding:14px 16px;margin:12px 0;';
+
+      var html = '<p style="font-size:13px;font-weight:700;color:#166534;margin-bottom:10px;">📍 Posizioni trovate dall\'AI — seleziona quelle da importare:</p>';
+
+      if (_importedGeneralInfo) {
+        html += '<label style="display:flex;align-items:flex-start;gap:8px;margin-bottom:8px;font-size:13px;color:#374151;cursor:pointer;">' +
+          '<input type="checkbox" checked data-loc-idx="general" style="margin-top:2px;"> ' +
+          '<span><strong>Info generali evento</strong><br><span style="color:#64748b;font-size:12px;">' + _importedGeneralInfo.substring(0, 120) + '…</span></span></label>';
+      }
+
+      _importedLocations.forEach(function(loc, i) {
+        var geocoded = loc.lat ? ' 🗺️' : '';
+        html += '<label style="display:flex;align-items:flex-start;gap:8px;margin-bottom:8px;font-size:13px;color:#374151;cursor:pointer;">' +
+          '<input type="checkbox" checked data-loc-idx="' + i + '" style="margin-top:2px;"> ' +
+          '<span><strong>' + (loc.name || 'Posizione') + '</strong> <span style="color:#94a3b8;">(' + (loc.type || 'altro') + ')</span>' + geocoded +
+          (loc.address ? '<br><span style="color:#64748b;font-size:12px;">' + loc.address + '</span>' : '') +
+          (loc.notes ? '<br><span style="color:#64748b;font-size:12px;">' + loc.notes + '</span>' : '') +
+          '</span></label>';
+      });
+
+      html += '<button type="button" onclick="saveImportedLocations()" style="margin-top:6px;padding:8px 16px;background:#16a34a;color:white;border:none;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;">Salva posizioni selezionate</button>';
+      html += '<span id="import-loc-save-status" style="font-size:12px;color:#64748b;margin-left:10px;"></span>';
+
+      panel.innerHTML = html;
+      var banner = document.getElementById('import-ai-banner');
+      banner.parentNode.insertBefore(panel, banner);
+    }
+
+    async function saveImportedLocations() {
+      var status = document.getElementById('import-loc-save-status');
+      status.textContent = 'Salvataggio…';
+      var saved = 0;
+      var errors = 0;
+
+      // Salva general_info se selezionato
+      var genCheck = document.querySelector('[data-loc-idx="general"]');
+      if (genCheck && genCheck.checked && _importedGeneralInfo) {
+        try {
+          var fd = new FormData();
+          fd.append('general_info', _importedGeneralInfo);
+          await fetch('/api/events/' + _currentEventId + '/general-info', { method: 'POST', body: fd });
+          saved++;
+        } catch(e) { errors++; }
+      }
+
+      // Salva ogni posizione selezionata
+      for (var i = 0; i < _importedLocations.length; i++) {
+        var cb = document.querySelector('[data-loc-idx="' + i + '"]');
+        if (!cb || !cb.checked) continue;
+        var loc = _importedLocations[i];
+        try {
+          var fd = new FormData();
+          fd.append('name', loc.name || 'Posizione');
+          fd.append('type', loc.type || 'altro');
+          fd.append('notes', loc.notes || '');
+          fd.append('google_maps_url', loc.google_maps_url || '');
+          fd.append('lat', loc.lat != null ? loc.lat : '');
+          fd.append('lng', loc.lng != null ? loc.lng : '');
+          var resp = await fetch('/api/events/' + _currentEventId + '/locations', { method: 'POST', body: fd, redirect: 'manual' });
+          saved++;
+        } catch(e) { errors++; }
+      }
+
+      status.textContent = saved + ' element' + (saved === 1 ? 'o salvato' : 'i salvati') + (errors ? ' — ' + errors + ' errori' : '') + '. Ricarica la pagina per vederli.';
+      status.style.color = errors ? '#dc2626' : '#16a34a';
     }
 
     function selectSport(el, hiddenId) {
