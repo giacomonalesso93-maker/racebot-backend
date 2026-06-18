@@ -210,7 +210,9 @@
 
       <details style="margin-top:16px;">
         <summary style="font-size:13px;font-weight:600;color:#2563eb;cursor:pointer;padding:6px 0;">+ Aggiungi posizione generale (segreteria, hotel, parcheggio comune)</summary>
-        <form method="POST" action="/api/events/{{ event.id }}/locations" style="margin-top:12px;">
+        <form method="POST" action="/api/events/{{ event.id }}/locations" style="margin-top:12px;" id="ev-loc-form">
+          <input type="hidden" name="lat" id="ev-loc-lat">
+          <input type="hidden" name="lng" id="ev-loc-lng">
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px;">
             <div>
               <label style="display:block;font-size:12px;font-weight:600;color:#6b7280;margin-bottom:3px;">Nome *</label>
@@ -219,28 +221,60 @@
             <div>
               <label style="display:block;font-size:12px;font-weight:600;color:#6b7280;margin-bottom:3px;">Tipo</label>
               <select name="type" style="width:100%;padding:8px 10px;border:1.5px solid #e5e7eb;border-radius:7px;font-size:13px;outline:none;background:white;">
-                <option value="altro">Altro</option>
-                <option value="parcheggio">Parcheggio</option>
-                <option value="partenza">Partenza</option>
-                <option value="arrivo">Arrivo</option>
-                <option value="ristoro">Ristoro</option>
-                <option value="punto_medico">Punto medico</option>
+                <option value="segreteria">🗂️ Segreteria</option>
+                <option value="parcheggio">🅿️ Parcheggio</option>
+                <option value="hotel">🏨 Hotel</option>
+                <option value="ritiro_sacche">🎒 Ritiro sacche</option>
+                <option value="deposito_sacche">📦 Deposito sacche</option>
+                <option value="expo">🏪 Expo</option>
+                <option value="partenza">🏁 Partenza</option>
+                <option value="arrivo">🏆 Arrivo</option>
+                <option value="ristoro">🍌 Ristoro</option>
+                <option value="punto_medico">🏥 Punto medico</option>
+                <option value="altro">📍 Altro</option>
               </select>
             </div>
           </div>
-          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px;">
-            <div>
-              <label style="display:block;font-size:12px;font-weight:600;color:#6b7280;margin-bottom:3px;">Note</label>
-              <input type="text" name="notes" placeholder="es. Aperto dalle 7:00" style="width:100%;padding:8px 10px;border:1.5px solid #e5e7eb;border-radius:7px;font-size:13px;outline:none;">
+          <div style="margin-bottom:10px;">
+            <label style="display:block;font-size:12px;font-weight:600;color:#6b7280;margin-bottom:3px;">Note</label>
+            <input type="text" name="notes" placeholder="es. Aperto dalle 7:00" style="width:100%;padding:8px 10px;border:1.5px solid #e5e7eb;border-radius:7px;font-size:13px;outline:none;">
+          </div>
+          <div style="margin-bottom:12px;">
+            <label style="display:block;font-size:12px;font-weight:600;color:#6b7280;margin-bottom:3px;">Posizione su mappa</label>
+            <div style="display:flex;gap:8px;align-items:center;">
+              <input type="text" id="ev-loc-maps-url" name="google_maps_url" placeholder="https://maps.google.com/..." style="flex:1;padding:8px 10px;border:1.5px solid #e5e7eb;border-radius:7px;font-size:13px;outline:none;">
+              <button type="button" onclick="openMapPicker()" style="padding:8px 12px;background:#2563eb;color:white;border:none;border-radius:7px;font-size:13px;font-weight:600;cursor:pointer;white-space:nowrap;">📍 Scegli da mappa</button>
             </div>
-            <div>
-              <label style="display:block;font-size:12px;font-weight:600;color:#6b7280;margin-bottom:3px;">Link Google Maps</label>
-              <input type="url" name="google_maps_url" placeholder="https://maps.google.com/..." style="width:100%;padding:8px 10px;border:1.5px solid #e5e7eb;border-radius:7px;font-size:13px;outline:none;">
-            </div>
+            <p id="ev-loc-coords-label" style="font-size:11px;color:#94a3b8;margin-top:3px;display:none;"></p>
           </div>
           <button type="submit" style="padding:7px 16px;background:#f1f5f9;color:#475569;border:1px solid #e2e8f0;border-radius:7px;font-size:13px;font-weight:600;cursor:pointer;">+ Aggiungi posizione</button>
         </form>
       </details>
+
+      <!-- Map Picker Modal -->
+      <div id="map-picker-modal" style="display:none;position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,0.55);align-items:center;justify-content:center;">
+        <div style="background:white;border-radius:16px;width:min(640px,96vw);max-height:90vh;display:flex;flex-direction:column;overflow:hidden;box-shadow:0 20px 60px rgba(0,0,0,0.3);">
+          <div style="padding:16px 20px;border-bottom:1px solid #f1f5f9;display:flex;align-items:center;justify-content:space-between;">
+            <span style="font-size:15px;font-weight:700;color:#111827;">📍 Seleziona posizione</span>
+            <button type="button" onclick="closeMapPicker()" style="background:none;border:none;font-size:20px;cursor:pointer;color:#6b7280;line-height:1;">×</button>
+          </div>
+          <div style="padding:12px 16px;border-bottom:1px solid #f1f5f9;display:flex;gap:8px;">
+            <input type="text" id="map-search-input" placeholder="Cerca indirizzo… es. Via Roma 1, Arco" style="flex:1;padding:8px 12px;border:1.5px solid #e5e7eb;border-radius:8px;font-size:13px;outline:none;" onkeydown="if(event.key==='Enter'){event.preventDefault();searchAddress();}">
+            <button type="button" onclick="searchAddress()" style="padding:8px 14px;background:#2563eb;color:white;border:none;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;">Cerca</button>
+          </div>
+          <div id="map-picker-container" style="flex:1;min-height:360px;position:relative;">
+            <div id="map-picker" style="width:100%;height:360px;"></div>
+            <div id="map-picker-hint" style="position:absolute;bottom:10px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,0.65);color:white;font-size:12px;padding:5px 12px;border-radius:20px;pointer-events:none;white-space:nowrap;">Clicca sulla mappa per selezionare il punto</div>
+          </div>
+          <div style="padding:12px 16px;border-top:1px solid #f1f5f9;display:flex;align-items:center;justify-content:space-between;gap:8px;">
+            <span id="map-selected-label" style="font-size:12px;color:#6b7280;">Nessun punto selezionato</span>
+            <div style="display:flex;gap:8px;">
+              <button type="button" onclick="closeMapPicker()" style="padding:8px 16px;background:#f1f5f9;border:1px solid #e2e8f0;border-radius:8px;font-size:13px;color:#475569;cursor:pointer;">Annulla</button>
+              <button type="button" id="map-confirm-btn" onclick="confirmMapSelection()" disabled style="padding:8px 16px;background:#2563eb;color:white;border:none;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;opacity:0.5;">Conferma</button>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
 
     <div class="card" style="border: 2px solid #2563eb; box-shadow: 0 4px 24px rgba(37,99,235,0.08);">
@@ -485,6 +519,79 @@
         };
         reader.readAsDataURL(input.files[0]);
       }
+    }
+  </script>
+
+  <!-- Leaflet CSS/JS per Map Picker -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="">
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
+  <script>
+    var _mapPickerMap = null;
+    var _mapPickerMarker = null;
+    var _selectedLat = null;
+    var _selectedLng = null;
+
+    function openMapPicker() {
+      var modal = document.getElementById('map-picker-modal');
+      modal.style.display = 'flex';
+      // Inizializza la mappa solo al primo apertura
+      if (!_mapPickerMap) {
+        _mapPickerMap = L.map('map-picker').setView([46.07, 11.12], 10);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+          attribution: '© OpenStreetMap contributors',
+          maxZoom: 19
+        }).addTo(_mapPickerMap);
+        _mapPickerMap.on('click', function(e) {
+          setMapPoint(e.latlng.lat, e.latlng.lng);
+        });
+      }
+      // Forza ridisegno dopo apertura modal
+      setTimeout(function() { _mapPickerMap.invalidateSize(); }, 100);
+    }
+
+    function closeMapPicker() {
+      document.getElementById('map-picker-modal').style.display = 'none';
+    }
+
+    function setMapPoint(lat, lng) {
+      _selectedLat = lat;
+      _selectedLng = lng;
+      if (_mapPickerMarker) _mapPickerMarker.setLatLng([lat, lng]);
+      else _mapPickerMarker = L.marker([lat, lng]).addTo(_mapPickerMap);
+      document.getElementById('map-selected-label').textContent =
+        'Selezionato: ' + lat.toFixed(6) + ', ' + lng.toFixed(6);
+      document.getElementById('map-confirm-btn').disabled = false;
+      document.getElementById('map-confirm-btn').style.opacity = '1';
+      document.getElementById('map-picker-hint').style.display = 'none';
+    }
+
+    function searchAddress() {
+      var q = document.getElementById('map-search-input').value.trim();
+      if (!q) return;
+      fetch('https://nominatim.openstreetmap.org/search?format=json&q=' + encodeURIComponent(q) + '&limit=1')
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+          if (!data || !data.length) { alert('Indirizzo non trovato. Prova a essere più specifico.'); return; }
+          var lat = parseFloat(data[0].lat);
+          var lng = parseFloat(data[0].lon);
+          _mapPickerMap.setView([lat, lng], 16);
+          setMapPoint(lat, lng);
+        })
+        .catch(function() { alert('Errore nella ricerca. Riprova.'); });
+    }
+
+    function confirmMapSelection() {
+      if (_selectedLat === null) return;
+      document.getElementById('ev-loc-lat').value = _selectedLat;
+      document.getElementById('ev-loc-lng').value = _selectedLng;
+      // Genera link Google Maps
+      var mapsUrl = 'https://www.google.com/maps?q=' + _selectedLat + ',' + _selectedLng;
+      document.getElementById('ev-loc-maps-url').value = mapsUrl;
+      // Mostra coordinate sotto il campo
+      var label = document.getElementById('ev-loc-coords-label');
+      label.style.display = 'block';
+      label.textContent = '📍 ' + _selectedLat.toFixed(6) + ', ' + _selectedLng.toFixed(6);
+      closeMapPicker();
     }
   </script>
 

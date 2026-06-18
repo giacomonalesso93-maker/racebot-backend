@@ -10,6 +10,11 @@ TIPI_POSIZIONE = {
     "partenza": "🏁",
     "arrivo": "🏆",
     "parcheggio": "🅿️",
+    "segreteria": "🗂️",
+    "ritiro_sacche": "🎒",
+    "deposito_sacche": "📦",
+    "hotel": "🏨",
+    "expo": "🏪",
     "ristoro": "🍌",
     "punto_medico": "🏥",
     "altro": "📍"

@@ -4,6 +4,8 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Repliq — Login</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@800&display=swap" rel="stylesheet">
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body { font-family: system-ui, -apple-system, sans-serif; min-height: 100vh; display: flex; background: #f8fafc; }
@@ -19,7 +21,7 @@
     .left::after  { content:''; position:absolute; bottom:-80px; left:-80px; width:300px; height:300px; background:rgba(255,255,255,0.05); border-radius:50%; }
 
     .left-logo { position:relative; z-index:1; }
-    .logo-text { font-size:30px; font-weight:900; color:white; letter-spacing:-1px; }
+    .logo-text { font-family:'Plus Jakarta Sans',system-ui,sans-serif; font-size:30px; font-weight:800; letter-spacing:-1px; background:linear-gradient(90deg,#93c5fd,#c4b5fd); -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text; }
     .logo-sub { font-size:11px; color:rgba(255,255,255,0.65); margin-top:2px; }
 
     .left-content { position:relative; z-index:1; }
@@ -38,7 +40,7 @@
 
     .mobile-logo { display:flex; align-items:center; margin-bottom:40px; }
     @media(min-width: 900px) { .mobile-logo { display:none; } }
-    .mobile-logo-text { font-size:26px; font-weight:900; color:#1e2d5a; letter-spacing:-1px; }
+    .mobile-logo-text { font-family:'Plus Jakarta Sans',system-ui,sans-serif; font-size:26px; font-weight:800; letter-spacing:-1px; background:linear-gradient(90deg,#2563eb,#7c3aed); -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text; }
 
     .form-title { font-size:26px; font-weight:800; color:#0f172a; margin-bottom:6px; }
     .form-subtitle { color:#64748b; font-size:14px; margin-bottom:32px; }

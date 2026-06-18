@@ -405,17 +405,19 @@ async def add_event_location(
     if not organizer:
         raise HTTPException(status_code=401, detail="Non autenticato")
     get_owned_event(event_id, organizer)
-    supabase.table("locations").insert({
-        "id": str(uuid.uuid4()),
-        "event_id": event_id,
-        "race_id": None,
-        "name": name,
-        "type": type,
-        "notes": notes or None,
-        "google_maps_url": google_maps_url or None,
-        "lat": float(lat) if lat else None,
-        "lng": float(lng) if lng else None,
-    }).execute()
+    try:
+        supabase.table("locations").insert({
+            "id": str(uuid.uuid4()),
+            "event_id": event_id,
+            "name": name,
+            "type": type,
+            "notes": notes or None,
+            "google_maps_url": google_maps_url or None,
+            "lat": float(lat) if lat else None,
+            "lng": float(lng) if lng else None,
+        }).execute()
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Errore DB salvataggio posizione: {e}")
     return RedirectResponse(url=f"/dashboard/events/{event_id}?ok=Posizione+aggiunta", status_code=303)
 
 
