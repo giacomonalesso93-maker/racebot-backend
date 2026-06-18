@@ -85,6 +85,16 @@
       backdrop-filter: blur(4px);
     }
     .header-btn:hover { background: rgba(255,255,255,0.22); transform: translateY(-1px); }
+    .header-btn-icon {
+      background: rgba(255,255,255,0.12);
+      border: 1px solid rgba(255,255,255,0.2);
+      color: white; width: 32px; height: 32px;
+      border-radius: 50%; font-size: 15px;
+      cursor: pointer; display: flex; align-items: center; justify-content: center;
+      transition: background 0.15s, transform 0.1s;
+      backdrop-filter: blur(4px);
+    }
+    .header-btn-icon:hover { background: rgba(255,255,255,0.22); transform: translateY(-1px); }
 
     /* ── MAP ── */
     #map-panel { display: none; flex-shrink: 0; border-bottom: 1px solid #e2e8f0; }
@@ -288,6 +298,7 @@
       {% if not race.chatbot_logo_url %}
         <span class="header-brand">Repliq</span>
       {% endif %}
+      <button class="header-btn-icon" onclick="resetChat()" title="Ricomincia chat">↺</button>
       <button class="header-btn" onclick="toggleMap()">📍 Mappa</button>
       {% if is_organizer %}<a href="/dashboard" class="header-btn">← Dashboard</a>{% endif %}
     </div>
@@ -345,6 +356,21 @@
     let conversationHistory = [];
 
     input.addEventListener("keydown", e => { if (e.key === "Enter") sendMessage(); });
+
+    function resetChat() {
+      conversationHistory = [];
+      const welcomeMsg = messagesEl.querySelector('.msg-row');
+      messagesEl.innerHTML = '';
+      if (welcomeMsg) messagesEl.appendChild(welcomeMsg);
+      const qr = `<div class="quick-replies" id="quick-replies-welcome">
+        <button class="quick-reply-btn" onclick="quickAsk(this, 'Dove parcheggio?')">🅿️ Dove parcheggio?</button>
+        <button class="quick-reply-btn" onclick="quickAsk(this, 'A che ora parte la gara?')">⏰ Orario partenza?</button>
+        <button class="quick-reply-btn" onclick="quickAsk(this, 'Qual è il materiale obbligatorio?')">🎒 Materiale obbligatorio?</button>
+        <button class="quick-reply-btn" onclick="quickAsk(this, 'Dove sono i ristori?')">🥤 Dove sono i ristori?</button>
+      </div>`;
+      messagesEl.insertAdjacentHTML('beforeend', qr);
+      messagesEl.scrollTop = 0;
+    }
 
     function quickAsk(btn, question) {
       const container = document.getElementById("quick-replies-welcome");
