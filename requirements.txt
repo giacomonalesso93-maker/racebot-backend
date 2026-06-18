@@ -7,3 +7,5 @@ python-multipart
 python-dotenv
 resend
 supabase
+httpx
+beautifulsoup4

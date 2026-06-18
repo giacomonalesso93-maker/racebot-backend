@@ -287,51 +287,85 @@
         💡 Piano <strong>{{ plan_label }}</strong> — puoi aggiungere <strong>1 gara</strong> a questo evento. Usate: <strong>{{ total_races_count }}</strong>/1.
       </div>
       {% endif %}
-      <form method="POST" action="/api/races">
-        <input type="hidden" name="event_id" value="{{ event.id }}">
-        <label>Nome gara *</label>
-        <input type="text" name="name" placeholder="es. 25km, Gara Elite, Percorso Verde" required>
-        <div class="form-row">
-          <div>
-            <label>Data</label>
-            <input type="text" name="date" placeholder="es. 15 giugno 2025">
-          </div>
-          <div>
-            <label>Orario partenza</label>
-            <input type="text" name="start_time" placeholder="es. 08:30">
-          </div>
+
+      <!-- Toggle manuale / importa da URL -->
+      <div style="display:flex;gap:8px;margin-bottom:18px;">
+        <button type="button" id="tab-manual" onclick="switchAddTab('manual')"
+          style="flex:1;padding:9px;border-radius:9px;font-size:13px;font-weight:600;cursor:pointer;border:2px solid #2563eb;background:#2563eb;color:white;">
+          ✍️ Inserimento manuale
+        </button>
+        <button type="button" id="tab-url" onclick="switchAddTab('url')"
+          style="flex:1;padding:9px;border-radius:9px;font-size:13px;font-weight:600;cursor:pointer;border:2px solid #e2e8f0;background:white;color:#64748b;">
+          🔗 Importa da URL
+        </button>
+      </div>
+
+      <!-- Pannello importa da URL -->
+      <div id="panel-url" style="display:none;margin-bottom:16px;">
+        <p style="font-size:13px;color:#64748b;margin-bottom:10px;">Incolla il link al sito della gara — l'AI legge la pagina e pre-compila il form.</p>
+        <div style="display:flex;gap:8px;">
+          <input type="url" id="import-url-input" placeholder="https://sito-gara.it/percorso-25km"
+            style="flex:1;padding:9px 12px;border:1.5px solid #e5e7eb;border-radius:8px;font-size:13px;outline:none;"
+            onkeydown="if(event.key==='Enter'){event.preventDefault();importFromUrl();}">
+          <button type="button" onclick="importFromUrl()" id="import-url-btn"
+            style="padding:9px 16px;background:#2563eb;color:white;border:none;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;white-space:nowrap;">
+            Analizza
+          </button>
         </div>
-        <div class="form-row">
-          <div>
-            <label>Lunghezza (km)</label>
-            <input type="text" name="length_km" placeholder="es. 25">
+        <div id="import-url-status" style="margin-top:8px;font-size:12px;color:#64748b;display:none;"></div>
+      </div>
+
+      <!-- Form manuale (invariato) -->
+      <div id="panel-manual">
+        <form method="POST" action="/api/races">
+          <input type="hidden" name="event_id" value="{{ event.id }}">
+          <label>Nome gara *</label>
+          <input type="text" name="name" id="new-race-name" placeholder="es. 25km, Gara Elite, Percorso Verde" required>
+          <div class="form-row">
+            <div>
+              <label>Data</label>
+              <input type="text" name="date" id="new-race-date" placeholder="es. 15 giugno 2025">
+            </div>
+            <div>
+              <label>Orario partenza</label>
+              <input type="text" name="start_time" id="new-race-start-time" placeholder="es. 08:30">
+            </div>
+          </div>
+          <div class="form-row">
+            <div>
+              <label>Lunghezza (km)</label>
+              <input type="text" name="length_km" id="new-race-length" placeholder="es. 25">
+            </div>
+            <div>
+              <label>Dislivello +</label>
+              <input type="text" name="elevation_gain" id="new-race-elevation" placeholder="es. 1.200 m">
+            </div>
           </div>
           <div>
-            <label>Dislivello +</label>
-            <input type="text" name="elevation_gain" placeholder="es. 1.200 m">
+            <label>Email segreteria</label>
+            <input type="email" name="secretary_email" id="new-race-email" placeholder="segreteria@gara.it">
           </div>
-        </div>
-        <div>
-          <label>Email segreteria</label>
-          <input type="email" name="secretary_email" placeholder="segreteria@gara.it">
-        </div>
-        <div>
-          <label>Disciplina</label>
-          <input type="hidden" name="sport_type" id="sport-type-val" value="running">
-          <div class="sport-picker">
-            <div class="sport-opt selected" data-val="running" onclick="selectSport(this,'sport-type-val')">🏃 Corsa</div>
-            <div class="sport-opt" data-val="trail" onclick="selectSport(this,'sport-type-val')">🏔️ Trail</div>
-            <div class="sport-opt" data-val="cycling" onclick="selectSport(this,'sport-type-val')">🚴 Ciclismo</div>
-            <div class="sport-opt" data-val="mtb" onclick="selectSport(this,'sport-type-val')">🚵 MTB</div>
-            <div class="sport-opt" data-val="triathlon" onclick="selectSport(this,'sport-type-val')">🏊 Triathlon</div>
-            <div class="sport-opt" data-val="ski" onclick="selectSport(this,'sport-type-val')">⛷️ Sci</div>
-            <div class="sport-opt" data-val="trekking" onclick="selectSport(this,'sport-type-val')">🥾 Trekking</div>
-            <div class="sport-opt" data-val="obstacle" onclick="selectSport(this,'sport-type-val')">💪 OCR</div>
-            <div class="sport-opt" data-val="altro" onclick="selectSport(this,'sport-type-val')">🏅 Altro</div>
+          <div>
+            <label>Disciplina</label>
+            <input type="hidden" name="sport_type" id="sport-type-val" value="running">
+            <div class="sport-picker">
+              <div class="sport-opt selected" data-val="running" onclick="selectSport(this,'sport-type-val')">🏃 Corsa</div>
+              <div class="sport-opt" data-val="trail" onclick="selectSport(this,'sport-type-val')">🏔️ Trail</div>
+              <div class="sport-opt" data-val="cycling" onclick="selectSport(this,'sport-type-val')">🚴 Ciclismo</div>
+              <div class="sport-opt" data-val="mtb" onclick="selectSport(this,'sport-type-val')">🚵 MTB</div>
+              <div class="sport-opt" data-val="triathlon" onclick="selectSport(this,'sport-type-val')">🏊 Triathlon</div>
+              <div class="sport-opt" data-val="ski" onclick="selectSport(this,'sport-type-val')">⛷️ Sci</div>
+              <div class="sport-opt" data-val="trekking" onclick="selectSport(this,'sport-type-val')">🥾 Trekking</div>
+              <div class="sport-opt" data-val="obstacle" onclick="selectSport(this,'sport-type-val')">💪 OCR</div>
+              <div class="sport-opt" data-val="altro" onclick="selectSport(this,'sport-type-val')">🏅 Altro</div>
+            </div>
           </div>
-        </div>
-        <button type="submit">+ Aggiungi gara</button>
-      </form>
+          <div id="import-ai-banner" style="display:none;background:#f0fdf4;border:1px solid #86efac;border-radius:8px;padding:10px 14px;font-size:13px;color:#166534;margin:10px 0;">
+            ✅ Dati pre-compilati dall'AI — controlla e modifica se necessario prima di salvare.
+          </div>
+          <button type="submit">+ Aggiungi gara</button>
+        </form>
+      </div>
     </div>
 
     <h2 style="font-size:17px; font-weight:700; color:#111827; margin-bottom:14px;">Gare dell'evento ({{ races|length }})</h2>
@@ -442,6 +476,63 @@
       {val:"trekking",label:"🥾 Trekking"},{val:"obstacle",label:"💪 OCR"},
       {val:"altro",label:"🏅 Altro"}
     ];
+
+    function switchAddTab(tab) {
+      var isUrl = tab === 'url';
+      document.getElementById('panel-url').style.display = isUrl ? 'block' : 'none';
+      document.getElementById('panel-manual').style.display = isUrl ? 'none' : 'block';
+      document.getElementById('tab-url').style.cssText = isUrl
+        ? 'flex:1;padding:9px;border-radius:9px;font-size:13px;font-weight:600;cursor:pointer;border:2px solid #2563eb;background:#2563eb;color:white;'
+        : 'flex:1;padding:9px;border-radius:9px;font-size:13px;font-weight:600;cursor:pointer;border:2px solid #e2e8f0;background:white;color:#64748b;';
+      document.getElementById('tab-manual').style.cssText = isUrl
+        ? 'flex:1;padding:9px;border-radius:9px;font-size:13px;font-weight:600;cursor:pointer;border:2px solid #e2e8f0;background:white;color:#64748b;'
+        : 'flex:1;padding:9px;border-radius:9px;font-size:13px;font-weight:600;cursor:pointer;border:2px solid #2563eb;background:#2563eb;color:white;';
+    }
+
+    async function importFromUrl() {
+      var url = document.getElementById('import-url-input').value.trim();
+      if (!url) return;
+      var btn = document.getElementById('import-url-btn');
+      var status = document.getElementById('import-url-status');
+      btn.disabled = true;
+      btn.textContent = 'Analisi in corso…';
+      status.style.display = 'block';
+      status.style.color = '#64748b';
+      status.textContent = '🤖 L\'AI sta leggendo la pagina…';
+      try {
+        var formData = new FormData();
+        formData.append('url', url);
+        var resp = await fetch('/api/import-from-url', { method: 'POST', body: formData });
+        if (!resp.ok) {
+          var err = await resp.json().catch(function() { return {detail: 'Errore sconosciuto'}; });
+          throw new Error(err.detail || 'Errore server');
+        }
+        var data = await resp.json();
+        // Pre-compila il form manuale
+        if (data.name) document.getElementById('new-race-name').value = data.name;
+        if (data.date) document.getElementById('new-race-date').value = data.date;
+        if (data.start_time) document.getElementById('new-race-start-time').value = data.start_time;
+        if (data.length_km) document.getElementById('new-race-length').value = data.length_km;
+        if (data.elevation_gain) document.getElementById('new-race-elevation').value = data.elevation_gain;
+        if (data.secretary_email) document.getElementById('new-race-email').value = data.secretary_email;
+        if (data.sport_type) {
+          var sportVal = data.sport_type.toLowerCase();
+          document.getElementById('sport-type-val').value = sportVal;
+          document.querySelectorAll('.sport-opt').forEach(function(opt) {
+            opt.classList.toggle('selected', opt.dataset.val === sportVal);
+          });
+        }
+        // Mostra banner AI e passa al form manuale
+        document.getElementById('import-ai-banner').style.display = 'block';
+        switchAddTab('manual');
+      } catch(e) {
+        status.style.color = '#dc2626';
+        status.textContent = '❌ ' + e.message;
+      } finally {
+        btn.disabled = false;
+        btn.textContent = 'Analizza';
+      }
+    }
 
     function selectSport(el, hiddenId) {
       el.closest('.sport-picker').querySelectorAll('.sport-opt').forEach(o => o.classList.remove('selected'));

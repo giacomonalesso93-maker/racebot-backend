@@ -10,6 +10,8 @@ import shutil
 import json
 import xml.etree.ElementTree as ET
 from pathlib import Path
+import httpx
+from bs4 import BeautifulSoup
 
 from dotenv import load_dotenv
 import csv
@@ -444,6 +446,74 @@ def delete_event(event_id: str, session: str = Cookie(default=None)):
     supabase.table("races").update({"event_id": None}).eq("event_id", event_id).execute()
     supabase.table("events").delete().eq("id", event_id).execute()
     return RedirectResponse(url="/dashboard", status_code=303)
+
+
+# ─── IMPORT GARA DA URL ──────────────────────────────────────
+
+@app.post("/api/import-from-url")
+async def import_from_url(
+    url: str = Form(...),
+    session: str = Cookie(default=None)
+):
+    organizer = get_current_organizer(session) if session else None
+    if not organizer:
+        raise HTTPException(status_code=401, detail="Non autenticato")
+
+    # 1. Scarica la pagina
+    try:
+        async with httpx.AsyncClient(timeout=15, follow_redirects=True) as client:
+            headers = {"User-Agent": "Mozilla/5.0 (compatible; Repliq/1.0)"}
+            resp = await client.get(url, headers=headers)
+            resp.raise_for_status()
+            html = resp.text
+    except Exception as e:
+        raise HTTPException(status_code=422, detail=f"Impossibile scaricare la pagina: {e}")
+
+    # 2. Estrai testo pulito
+    soup = BeautifulSoup(html, "html.parser")
+    for tag in soup(["script", "style", "nav", "footer", "header", "aside"]):
+        tag.decompose()
+    text = soup.get_text(separator="\n", strip=True)
+    text = "\n".join(line for line in text.splitlines() if line.strip())[:8000]
+
+    # 3. Claude estrae i dati strutturati
+    import anthropic as _anthropic
+    client_ai = _anthropic.Anthropic(api_key=os.getenv("ANTHROPIC_API_KEY"))
+    prompt = f"""Analizza questo testo di una pagina web di una gara sportiva ed estrai le informazioni.
+Rispondi SOLO con un oggetto JSON valido, nessun altro testo.
+Campi da estrarre (usa null se non trovato):
+- name: nome della gara (stringa)
+- date: data (stringa leggibile, es. "15 giugno 2025")
+- start_time: orario di partenza (es. "08:30")
+- location: luogo/città
+- length_km: distanza in km (solo numero, es. "25" o "42.195")
+- elevation_gain: dislivello positivo in metri (solo numero, es. "1200")
+- secretary_email: email segreteria/info
+- sport_type: uno tra running, trail, cycling, mtb, triathlon, ski, trekking, obstacle, altro
+- notes: eventuali note utili (max 200 caratteri)
+
+Testo della pagina:
+{text}
+
+Rispondi solo con JSON:"""
+
+    try:
+        msg = client_ai.messages.create(
+            model="claude-haiku-4-5-20251001",
+            max_tokens=512,
+            messages=[{"role": "user", "content": prompt}]
+        )
+        raw = msg.content[0].text.strip()
+        # Rimuovi eventuali markdown code fences
+        if raw.startswith("```"):
+            raw = raw.split("```")[1]
+            if raw.startswith("json"):
+                raw = raw[4:]
+        data = json.loads(raw)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Errore analisi AI: {e}")
+
+    return data
 
 
 # ─── GARE ────────────────────────────────────────────────────
