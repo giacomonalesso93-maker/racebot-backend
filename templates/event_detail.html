@@ -402,7 +402,7 @@
                 <button type="button" class="btn btn-gray" onclick="document.getElementById('pdf-{{ race.id }}').click()">📄 Sostituisci PDF</button>
               </form>
             {% elif race.text_regulation %}
-              <button type="button" class="btn btn-gray" onclick="openTextReg('{{ race.id }}', {{ race.text_regulation | tojson }})">📝 Modifica testo</button>
+              <button type="button" class="btn btn-gray" data-race-id="{{ race.id }}" data-text-reg="{{ race.text_regulation | e }}" onclick="openTextRegBtn(this)">📝 Modifica testo</button>
             {% else %}
               <form method="POST" action="/api/races/{{ race.id }}/upload" enctype="multipart/form-data" class="inline">
                 <input type="file" name="file" accept=".pdf" id="pdf-{{ race.id }}" style="display:none" onchange="this.form.submit()">
@@ -775,6 +775,10 @@
       document.getElementById("text-reg-form").action = `/api/races/${raceId}/text-regulation`;
       document.getElementById("text-reg-content").value = currentText || "";
       document.getElementById("text-reg-modal").style.display = "flex";
+    }
+
+    function openTextRegBtn(btn) {
+      openTextReg(btn.dataset.raceId, btn.dataset.textReg || "");
     }
 
     function copyLink() {
