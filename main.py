@@ -872,16 +872,10 @@ async def ask_question(
                         "answered": answered
                     }).execute()
 
-                    # Ticket se non risposto
-                    ticket_id = None
-                    if not answered:
-                        ticket = create_ticket(race_id, race["name"], question, participant_email)
-                        ticket_id = ticket["id"]
-                        org = supabase.table("organizers").select("*").eq("id", race["organizer_id"]).execute().data
-                        if org:
-                            notify_organizer(org[0]["email"], org[0]["name"], ticket)
-
-                    meta = json.dumps({"ticket_creato": not answered, "ticket_id": ticket_id})
+                    # Se non risposto: il ticket NON viene creato qui. Viene creato (e l'organizzatore
+                    # notificato) solo se il partecipante conferma l'invio della propria email dal modale
+                    # (vedi /api/ask/{race_id}/confirm-ticket). Lo storico resta comunque in questions_log.
+                    meta = json.dumps({"ticket_creato": not answered, "question": question})
                     yield f"data: [DONE]\n\n"
                     yield f"data: [META]{meta}\n\n"
                 else:
@@ -903,6 +897,29 @@ async def ask_question(
 
 
 # ─── TICKET ──────────────────────────────────────────────────
+
+@app.post("/api/ask/{race_id}/confirm-ticket")
+async def confirm_ticket(
+    race_id: str,
+    question: str = Form(...),
+    email: str = Form(...)
+):
+    """Crea il ticket e notifica l'organizzatore SOLO quando il partecipante
+    conferma l'invio della propria email dal modale post-risposta non trovata."""
+    email = email.strip()
+    question = question.strip()
+    if not email or not question:
+        raise HTTPException(status_code=400, detail="Email e domanda richieste")
+    race_data = supabase.table("races").select("name,organizer_id").eq("id", race_id).execute().data
+    if not race_data:
+        raise HTTPException(status_code=404, detail="Gara non trovata")
+    race = race_data[0]
+    ticket = create_ticket(race_id, race["name"], question, email)
+    org = supabase.table("organizers").select("*").eq("id", race["organizer_id"]).execute().data
+    if org:
+        notify_organizer(org[0]["email"], org[0]["name"], ticket)
+    return {"ok": True, "ticket_id": ticket["id"]}
+
 
 @app.post("/api/tickets/{ticket_id}/reply")
 def reply_ticket(

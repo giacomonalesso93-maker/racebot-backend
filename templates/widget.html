@@ -117,6 +117,17 @@
     .rb-powered { text-align:center; font-size:10px; color:#94a3b8; padding-bottom:4px; background:white; }
     .rb-powered a { color:{{ race.chatbot_color or '#2563eb' }}; text-decoration:none; font-weight:700; }
 
+    /* EMAIL MODAL */
+    .rb-modal-overlay { position:absolute; inset:0; background:rgba(15,23,42,0.45); display:none; align-items:center; justify-content:center; z-index:20; }
+    .rb-modal-overlay.open { display:flex; }
+    .rb-modal-sheet { background:white; border-radius:16px; padding:18px; width:85%; max-width:280px; box-shadow:0 10px 40px rgba(0,0,0,0.2); }
+    .rb-modal-sheet h4 { font-size:13px; font-weight:800; margin-bottom:6px; color:#0f172a; }
+    .rb-modal-sheet p { font-size:11.5px; color:#64748b; margin-bottom:10px; line-height:1.5; }
+    .rb-modal-sheet input { width:100%; padding:9px 11px; border:1.5px solid #e2e8f0; border-radius:10px; font-size:13px; outline:none; margin-bottom:10px; font-family:inherit; }
+    .rb-modal-sheet input:focus { border-color:{{ race.chatbot_color or '#2563eb' }}; }
+    .rb-modal-actions { display:flex; gap:8px; }
+    .rb-modal-actions button { flex:1; padding:9px; border:none; border-radius:10px; font-size:12.5px; font-weight:700; cursor:pointer; }
+
     @media (max-width:440px) {
       #rb-window { right:12px; bottom:88px; width:calc(100vw - 24px); }
       #rb-bubble { right:12px; bottom:12px; }
@@ -166,6 +177,18 @@
       <button class="rb-send" id="rb-send" onclick="rbSend()">➤</button>
     </div>
     <div class="rb-powered">Powered by <a href="https://repliq.it" target="_blank">Repliq</a></div>
+
+    <div class="rb-modal-overlay" id="rb-email-modal">
+      <div class="rb-modal-sheet">
+        <h4>📧 Ricevi risposta via email</h4>
+        <p>Non ho trovato la risposta. Lascia la tua email e l'organizzatore ti risponderà appena possibile.</p>
+        <input type="email" id="rb-participant-email" placeholder="tua@email.it">
+        <div class="rb-modal-actions">
+          <button onclick="rbSubmitEmail()" style="background:{{ race.chatbot_color or '#2563eb' }};color:white;">Invia</button>
+          <button onclick="rbCloseModal()" style="background:#f1f5f9;color:#475569;">Salta</button>
+        </div>
+      </div>
+    </div>
   </div>
 
   <script>
@@ -174,6 +197,7 @@
     const input = document.getElementById("rb-input");
     const sendBtn = document.getElementById("rb-send");
     let history = [];
+    let pendingQuestion = null;
 
     function rbToggle() {
       document.getElementById("rb-bubble").classList.toggle("open");
@@ -254,7 +278,17 @@
             if (!part.startsWith("data: ")) continue;
             const data = part.slice(6);
             if (data === "[DONE]") { botDiv.classList.remove("streaming"); continue; }
-            if (data.startsWith("[META]")) { try { const m=JSON.parse(data.slice(6)); history.push({role:"assistant",content:fullText}); } catch(e){} continue; }
+            if (data.startsWith("[META]")) {
+              try {
+                const m=JSON.parse(data.slice(6));
+                history.push({role:"assistant",content:fullText});
+                if (m.ticket_creato) {
+                  pendingQuestion = m.question;
+                  setTimeout(() => { document.getElementById("rb-email-modal").classList.add("open"); }, 800);
+                }
+              } catch(e){}
+              continue;
+            }
             if (data.startsWith("[ERROR]")) { botDiv.classList.remove("streaming"); botDiv.innerHTML=rbFmt("Errore: "+data.slice(7)); continue; }
             fullText += data.replace(/\\n/g,"\n");
             botDiv.innerHTML = rbFmt(fullText);
@@ -265,6 +299,25 @@
         botDiv.classList.remove("streaming");
         botDiv.innerHTML = rbFmt("Errore di connessione. Riprova.");
       } finally { sendBtn.disabled = false; input.focus(); }
+    }
+
+    async function rbSubmitEmail() {
+      const email = document.getElementById("rb-participant-email").value.trim();
+      if (email && pendingQuestion) {
+        await fetch("/api/ask/" + RACE_ID + "/confirm-ticket", {
+          method: "POST",
+          headers: {"Content-Type": "application/x-www-form-urlencoded"},
+          body: "question=" + encodeURIComponent(pendingQuestion) + "&email=" + encodeURIComponent(email)
+        });
+        rbAddRow("Grazie! Riceverai una risposta via email appena possibile. 📧", "bot");
+      }
+      pendingQuestion = null;
+      rbCloseModal();
+    }
+
+    function rbCloseModal() {
+      document.getElementById("rb-email-modal").classList.remove("open");
+      document.getElementById("rb-participant-email").value = "";
     }
   </script>
 </body>

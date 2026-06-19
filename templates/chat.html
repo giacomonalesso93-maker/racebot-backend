@@ -352,7 +352,7 @@
     const messagesEl = document.getElementById("messages");
     const input = document.getElementById("question");
     let mapInitialized = false;
-    let pendingTicketId = null;
+    let pendingQuestion = null;
     let conversationHistory = [];
 
     input.addEventListener("keydown", e => { if (e.key === "Enter") sendMessage(); });
@@ -494,7 +494,7 @@
               const meta = JSON.parse(data.slice(6));
               conversationHistory.push({ role: "assistant", content: fullText });
               if (meta.ticket_creato) {
-                pendingTicketId = meta.ticket_id;
+                pendingQuestion = meta.question;
                 setTimeout(() => { document.getElementById("email-modal").style.display = "flex"; }, 800);
               }
               continue;
@@ -521,15 +521,16 @@
 
     async function submitEmail() {
       const email = document.getElementById("participant-email").value.trim();
-      if (email && pendingTicketId) {
-        await fetch('/api/tickets/' + pendingTicketId + '/email', {
+      if (email && pendingQuestion) {
+        await fetch('/api/ask/' + raceId + '/confirm-ticket', {
           method: "POST",
           headers: {"Content-Type": "application/x-www-form-urlencoded"},
-          body: "email=" + encodeURIComponent(email)
+          body: "question=" + encodeURIComponent(pendingQuestion) + "&email=" + encodeURIComponent(email)
         });
+        addMessage("Grazie! Riceverai una risposta via email appena possibile. 📧", "bot");
       }
+      pendingQuestion = null;
       closeModal();
-      addMessage("Grazie! Riceverai una risposta via email appena possibile. 📧", "bot");
     }
 
     function closeModal() { document.getElementById("email-modal").style.display = "none"; }
