@@ -423,6 +423,65 @@ async def add_event_location(
     return RedirectResponse(url=f"/dashboard/events/{event_id}?ok=Posizione+aggiunta", status_code=303)
 
 
+@app.post("/api/events/{event_id}/locations/{location_id}/edit")
+async def edit_event_location(
+    event_id: str,
+    location_id: str,
+    name: str = Form(...),
+    type: str = Form("altro"),
+    notes: str = Form(""),
+    google_maps_url: str = Form(""),
+    lat: str = Form(""),
+    lng: str = Form(""),
+    session: str = Cookie(default=None)
+):
+    organizer = get_current_organizer(session) if session else None
+    if not organizer:
+        raise HTTPException(status_code=401, detail="Non autenticato")
+    get_owned_event(event_id, organizer)
+    loc = get_owned_location(location_id, organizer)
+    if loc.get("event_id") != event_id:
+        raise HTTPException(status_code=404, detail="Posizione non trovata")
+    supabase.table("locations").update({
+        "name": name,
+        "type": type,
+        "notes": notes or None,
+        "google_maps_url": google_maps_url or None,
+        "lat": float(lat) if lat else None,
+        "lng": float(lng) if lng else None,
+    }).eq("id", location_id).execute()
+    return RedirectResponse(url=f"/dashboard/events/{event_id}?ok=Posizione+aggiornata", status_code=303)
+
+
+@app.post("/api/events/{event_id}/locations/{location_id}/delete")
+def delete_event_location(event_id: str, location_id: str, session: str = Cookie(default=None)):
+    organizer = get_current_organizer(session) if session else None
+    if not organizer:
+        raise HTTPException(status_code=401, detail="Non autenticato")
+    get_owned_event(event_id, organizer)
+    loc = get_owned_location(location_id, organizer)
+    if loc.get("event_id") != event_id:
+        raise HTTPException(status_code=404, detail="Posizione non trovata")
+    delete_location(location_id)
+    return RedirectResponse(url=f"/dashboard/events/{event_id}?ok=Posizione+eliminata", status_code=303)
+
+
+@app.post("/api/events/{event_id}/master-regulation")
+def save_event_master_regulation(
+    event_id: str,
+    text_regulation: str = Form(""),
+    session: str = Cookie(default=None)
+):
+    """Salva (o cancella, se vuoto) il regolamento master valido per tutte le gare dell'evento."""
+    organizer = get_current_organizer(session) if session else None
+    if not organizer:
+        raise HTTPException(status_code=401, detail="Non autenticato")
+    get_owned_event(event_id, organizer)
+    supabase.table("events").update({"text_regulation": text_regulation or None}).eq("id", event_id).execute()
+    msg = "Regolamento+master+salvato" if text_regulation else "Regolamento+master+rimosso"
+    return RedirectResponse(url=f"/dashboard/events/{event_id}?ok={msg}", status_code=303)
+
+
 @app.post("/api/races/{race_id}/delete")
 def delete_race(race_id: str, event_id: str = Form(""), session: str = Cookie(default=None)):
     organizer = get_current_organizer(session) if session else None
@@ -739,10 +798,13 @@ async def ask_question(
     event_id = race.get("event_id")
     event_locs = []
     event_general_info = ""
+    event_master_regulation = ""
     if event_id:
-        event_data = supabase.table("events").select("general_info,secretary_location,secretary_email,name").eq("id", event_id).execute().data
+        event_data = supabase.table("events").select("general_info,secretary_location,secretary_email,name,text_regulation").eq("id", event_id).execute().data
         if event_data:
             ev = event_data[0]
+            if ev.get("text_regulation"):
+                event_master_regulation = ev["text_regulation"]
             if ev.get("general_info"):
                 event_general_info = f"Informazioni generali dell'evento {ev['name']}:\n{ev['general_info']}"
             if ev.get("secretary_location"):
@@ -839,7 +901,8 @@ async def ask_question(
         try:
             for chunk in stream_answer(
                 question, chunks, race["name"],
-                location_context, qa_context, race_info, parsed_history
+                location_context, qa_context, race_info, parsed_history,
+                master_regulation=event_master_regulation
             ):
                 if chunk.startswith("data: [DONE]"):
                     # Raccogli la risposta completa per logging e ticket

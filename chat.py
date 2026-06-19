@@ -12,7 +12,7 @@ client = anthropic.Anthropic(api_key=os.getenv("ANTHROPIC_API_KEY"))
 
 def build_system_and_sections(context_chunks: list[str], race_name: str,
                                location_context: str, qa_context: str,
-                               race_info: dict = None) -> tuple[str, str]:
+                               race_info: dict = None, master_regulation: str = "") -> tuple[str, str]:
     """Costruisce system prompt e sezioni di contesto condivisi tra streaming e non."""
     context = "\n\n---\n\n".join(context_chunks)
 
@@ -53,12 +53,14 @@ If the user writes in Spanish → respond in Spanish.
 If the user writes in German → respond in German.
 Always be friendly and precise.
 
-You have five information sources, in order of priority:
+You have these information sources, in order of priority:
 1. Organizer's custom answers (use these first, verbatim)
 2. Basic race info (date, location, elevation, length, start time — answer immediately)
-3. Official race regulations (PDF or text)
+3. Official regulations. There may be TWO regulation texts: the EVENT MASTER REGULATION (valid for all races of the event) and the SPECIFIC RACE REGULATION (for this race only). Treat them as a single combined body of rules.
 4. Locations and logistics points
 5. Weather forecast for race day (use only if available and the user asks about weather)
+
+REGULATION DEDUPLICATION RULE: The event master regulation and the specific race regulation complement each other. If the same information appears in both, give it ONCE — never repeat the same rule twice in your answer. If they genuinely conflict on the same point, mention both briefly and invite the user to confirm with the race secretariat; do not silently pick one.
 
 LOCATION RULE: When mentioning any location (parking, start, finish, refreshments, etc.) that has a "Link mappa" in the context, ALWAYS include the URL in your response on a new line, exactly as provided. Example: "Parcheggio P1 in Via Roma. 🗺️ https://maps.google.com/..."
 
@@ -79,8 +81,11 @@ Never invent information."""
     sections = ""
     if race_info_lines:
         sections += f"Informazioni base della gara {race_name}:\n" + "\n".join(race_info_lines) + "\n\n"
+    if master_regulation:
+        master_label = "REGOLAMENTO MASTER DELL'EVENTO (valido per tutte le gare dell'evento)"
+        sections += master_label + ":\n\n" + master_regulation.strip() + "\n\n"
     if context:
-        sections += f"Regolamento della gara:\n\n{context}"
+        sections += f"REGOLAMENTO SPECIFICO della gara {race_name}:\n\n{context}"
     if location_context:
         sections += f"\n\n{location_context}"
     if qa_context:
@@ -93,10 +98,10 @@ Never invent information."""
 
 def get_answer(question: str, context_chunks: list[str], race_name: str = "la gara",
                location_context: str = "", qa_context: str = "",
-               race_info: dict = None, history: list = None) -> str:
+               race_info: dict = None, history: list = None, master_regulation: str = "") -> str:
     """Risposta completa (non streaming). Usata come fallback."""
     system_prompt, sections = build_system_and_sections(
-        context_chunks, race_name, location_context, qa_context, race_info
+        context_chunks, race_name, location_context, qa_context, race_info, master_regulation
     )
 
     messages = _build_messages(sections, question, history)
@@ -112,14 +117,14 @@ def get_answer(question: str, context_chunks: list[str], race_name: str = "la ga
 
 def stream_answer(question: str, context_chunks: list[str], race_name: str = "la gara",
                   location_context: str = "", qa_context: str = "",
-                  race_info: dict = None, history: list = None):
+                  race_info: dict = None, history: list = None, master_regulation: str = ""):
     """
     Generator che produce testo in streaming tramite SSE.
     Yielda stringhe nel formato: 'data: <testo>\\n\\n'
     Termina con: 'data: [DONE]\\n\\n'
     """
     system_prompt, sections = build_system_and_sections(
-        context_chunks, race_name, location_context, qa_context, race_info
+        context_chunks, race_name, location_context, qa_context, race_info, master_regulation
     )
 
     messages = _build_messages(sections, question, history)

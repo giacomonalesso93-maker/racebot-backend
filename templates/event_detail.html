@@ -200,8 +200,52 @@
         <p style="font-size:13px;font-weight:600;color:#374151;margin-bottom:10px;">📍 Posizioni generali evento ({{ event_locations|length }})</p>
         <div style="display:flex;flex-direction:column;gap:6px;">
           {% for loc in event_locations %}
-          <div style="background:#f8fafc;border-radius:8px;padding:8px 12px;border:1px solid #f1f5f9;display:flex;align-items:center;justify-content:space-between;gap:8px;">
-            <span style="font-size:13px;color:#374151;">{{ loc.name }} <span style="color:#94a3b8;">({{ loc.type }})</span>{% if loc.notes %} — {{ loc.notes }}{% endif %}</span>
+          {% set maps_url = loc.google_maps_url if loc.google_maps_url else ('https://www.google.com/maps?q=' ~ loc.lat ~ ',' ~ loc.lng if loc.lat and loc.lng else '') %}
+          <div style="background:#f8fafc;border-radius:8px;padding:8px 12px;border:1px solid #f1f5f9;">
+            <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;">
+              <span style="font-size:13px;color:#374151;">{{ loc.name }} <span style="color:#94a3b8;">({{ loc.type }})</span>{% if loc.notes %} — {{ loc.notes }}{% endif %}</span>
+              <div style="display:flex;gap:6px;align-items:center;flex-shrink:0;">
+                {% if maps_url %}
+                <a href="{{ maps_url }}" target="_blank" rel="noopener" title="Verifica posizione su mappa" style="font-size:12px;padding:4px 9px;background:#eff6ff;color:#2563eb;border:1px solid #bfdbfe;border-radius:6px;text-decoration:none;font-weight:600;white-space:nowrap;">🗺️ Mappa</a>
+                {% else %}
+                <span style="font-size:11px;color:#cbd5e1;font-style:italic;white-space:nowrap;">no posizione</span>
+                {% endif %}
+                <button type="button" onclick="toggleEditLoc('{{ loc.id }}')" title="Modifica" style="font-size:12px;padding:4px 9px;background:#f1f5f9;color:#475569;border:1px solid #e2e8f0;border-radius:6px;cursor:pointer;font-weight:600;">✏️</button>
+                <form method="POST" action="/api/events/{{ event.id }}/locations/{{ loc.id }}/delete" onsubmit="return confirm('Eliminare la posizione &quot;{{ loc.name }}&quot;?');" style="display:inline;margin:0;">
+                  <button type="submit" title="Elimina" style="font-size:12px;padding:4px 9px;background:#fef2f2;color:#dc2626;border:1px solid #fecaca;border-radius:6px;cursor:pointer;font-weight:600;">🗑️</button>
+                </form>
+              </div>
+            </div>
+            <form method="POST" action="/api/events/{{ event.id }}/locations/{{ loc.id }}/edit" id="editloc-{{ loc.id }}" style="display:none;margin-top:10px;padding-top:10px;border-top:1px dashed #e2e8f0;">
+              <input type="hidden" name="lat" id="el-{{ loc.id }}-lat" value="{{ loc.lat if loc.lat is not none else '' }}">
+              <input type="hidden" name="lng" id="el-{{ loc.id }}-lng" value="{{ loc.lng if loc.lng is not none else '' }}">
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px;">
+                <input type="text" name="name" value="{{ loc.name }}" required placeholder="Nome" style="width:100%;padding:7px 9px;border:1.5px solid #e5e7eb;border-radius:7px;font-size:13px;outline:none;">
+                <select name="type" style="width:100%;padding:7px 9px;border:1.5px solid #e5e7eb;border-radius:7px;font-size:13px;outline:none;background:white;">
+                  <option value="segreteria" {% if loc.type=='segreteria' %}selected{% endif %}>🗂️ Segreteria</option>
+                  <option value="parcheggio" {% if loc.type=='parcheggio' %}selected{% endif %}>🅿️ Parcheggio</option>
+                  <option value="hotel" {% if loc.type=='hotel' %}selected{% endif %}>🏨 Hotel</option>
+                  <option value="ritiro_sacche" {% if loc.type=='ritiro_sacche' %}selected{% endif %}>🎒 Ritiro sacche</option>
+                  <option value="deposito_sacche" {% if loc.type=='deposito_sacche' %}selected{% endif %}>📦 Deposito sacche</option>
+                  <option value="expo" {% if loc.type=='expo' %}selected{% endif %}>🏪 Expo</option>
+                  <option value="partenza" {% if loc.type=='partenza' %}selected{% endif %}>🏁 Partenza</option>
+                  <option value="arrivo" {% if loc.type=='arrivo' %}selected{% endif %}>🏆 Arrivo</option>
+                  <option value="ristoro" {% if loc.type=='ristoro' %}selected{% endif %}>🍌 Ristoro</option>
+                  <option value="punto_medico" {% if loc.type=='punto_medico' %}selected{% endif %}>🏥 Punto medico</option>
+                  <option value="altro" {% if loc.type not in ['segreteria','parcheggio','hotel','ritiro_sacche','deposito_sacche','expo','partenza','arrivo','ristoro','punto_medico'] %}selected{% endif %}>📍 Altro</option>
+                </select>
+              </div>
+              <input type="text" name="notes" value="{{ loc.notes or '' }}" placeholder="Note (es. Aperto dalle 7:00)" style="width:100%;padding:7px 9px;border:1.5px solid #e5e7eb;border-radius:7px;font-size:13px;outline:none;margin-bottom:8px;">
+              <div style="display:flex;gap:8px;align-items:center;margin-bottom:8px;">
+                <input type="text" name="google_maps_url" id="el-{{ loc.id }}-url" value="{{ loc.google_maps_url or '' }}" placeholder="https://maps.google.com/..." style="flex:1;padding:7px 9px;border:1.5px solid #e5e7eb;border-radius:7px;font-size:13px;outline:none;">
+                <button type="button" onclick="openMapPicker('el-{{ loc.id }}-lat','el-{{ loc.id }}-lng','el-{{ loc.id }}-url','el-{{ loc.id }}-coords')" style="padding:7px 11px;background:#2563eb;color:white;border:none;border-radius:7px;font-size:12px;font-weight:600;cursor:pointer;white-space:nowrap;">📍 Scegli da mappa</button>
+              </div>
+              <p id="el-{{ loc.id }}-coords" style="font-size:11px;color:#94a3b8;margin:0 0 8px;display:none;"></p>
+              <div style="display:flex;gap:8px;">
+                <button type="submit" style="padding:7px 16px;background:#2563eb;color:white;border:none;border-radius:7px;font-size:13px;font-weight:600;cursor:pointer;">Salva modifiche</button>
+                <button type="button" onclick="toggleEditLoc('{{ loc.id }}')" style="padding:7px 14px;background:#f1f5f9;color:#475569;border:1px solid #e2e8f0;border-radius:7px;font-size:13px;font-weight:600;cursor:pointer;">Annulla</button>
+              </div>
+            </form>
           </div>
           {% endfor %}
         </div>
@@ -275,6 +319,25 @@
           </div>
         </div>
       </div>
+    </div>
+
+    <!-- REGOLAMENTO MASTER EVENTO -->
+    <div class="card">
+      <h2>📜 Regolamento Master Evento <span style="font-size:12px;font-weight:400;color:#94a3b8;margin-left:8px;">Valido per tutte le gare — usato solo dal chatbot</span></h2>
+      <p style="font-size:13px;color:#64748b;margin:6px 0 14px;line-height:1.5;">
+        Inserisci qui le regole comuni a tutto l'evento (es. obbligo materiale, cancelli orari generali, codice di condotta, squalifiche). Il chatbot di <strong>ogni gara</strong> userà questo regolamento <strong>insieme</strong> al regolamento specifico della gara. Se un'informazione è presente in entrambi, il bot risponde una sola volta senza ripetersi. Questo testo <strong>non</strong> appare nella pagina pubblica.
+      </p>
+      <form method="POST" action="/api/events/{{ event.id }}/master-regulation">
+        <textarea name="text_regulation" placeholder="Incolla qui il regolamento master valido per tutte le gare dell'evento..." style="width:100%;padding:11px 13px;border:1.5px solid #e5e7eb;border-radius:9px;font-size:14px;outline:none;background:#fafafa;resize:vertical;min-height:160px;font-family:inherit;line-height:1.55;">{{ event.text_regulation or '' }}</textarea>
+        <div style="display:flex;gap:10px;align-items:center;margin-top:12px;">
+          <button type="submit" style="padding:9px 20px;background:#2563eb;color:white;border:none;border-radius:8px;font-size:14px;font-weight:600;cursor:pointer;">Salva regolamento master</button>
+          {% if event.text_regulation %}
+          <span style="font-size:12px;color:#16a34a;font-weight:600;">✓ Regolamento master attivo ({{ event.text_regulation|length }} caratteri)</span>
+          {% else %}
+          <span style="font-size:12px;color:#94a3b8;">Nessun regolamento master impostato</span>
+          {% endif %}
+        </div>
+      </form>
     </div>
 
     <div class="card" style="border: 2px solid #2563eb; box-shadow: 0 4px 24px rgba(37,99,235,0.08);">
@@ -819,8 +882,19 @@
     var _mapPickerMarker = null;
     var _selectedLat = null;
     var _selectedLng = null;
+    var _mapTarget = { lat: 'ev-loc-lat', lng: 'ev-loc-lng', url: 'ev-loc-maps-url', label: 'ev-loc-coords-label' };
 
-    function openMapPicker() {
+    function toggleEditLoc(id) {
+      var f = document.getElementById('editloc-' + id);
+      if (f) f.style.display = (f.style.display === 'none' || !f.style.display) ? 'block' : 'none';
+    }
+
+    function openMapPicker(latId, lngId, urlId, labelId) {
+      if (latId) {
+        _mapTarget = { lat: latId, lng: lngId, url: urlId, label: labelId };
+      } else {
+        _mapTarget = { lat: 'ev-loc-lat', lng: 'ev-loc-lng', url: 'ev-loc-maps-url', label: 'ev-loc-coords-label' };
+      }
       var modal = document.getElementById('map-picker-modal');
       modal.style.display = 'flex';
       // Inizializza la mappa solo al primo apertura
@@ -871,15 +945,20 @@
 
     function confirmMapSelection() {
       if (_selectedLat === null) return;
-      document.getElementById('ev-loc-lat').value = _selectedLat;
-      document.getElementById('ev-loc-lng').value = _selectedLng;
+      var latEl = document.getElementById(_mapTarget.lat);
+      var lngEl = document.getElementById(_mapTarget.lng);
+      if (latEl) latEl.value = _selectedLat;
+      if (lngEl) lngEl.value = _selectedLng;
       // Genera link Google Maps
       var mapsUrl = 'https://www.google.com/maps?q=' + _selectedLat + ',' + _selectedLng;
-      document.getElementById('ev-loc-maps-url').value = mapsUrl;
+      var urlEl = document.getElementById(_mapTarget.url);
+      if (urlEl) urlEl.value = mapsUrl;
       // Mostra coordinate sotto il campo
-      var label = document.getElementById('ev-loc-coords-label');
-      label.style.display = 'block';
-      label.textContent = '📍 ' + _selectedLat.toFixed(6) + ', ' + _selectedLng.toFixed(6);
+      var label = document.getElementById(_mapTarget.label);
+      if (label) {
+        label.style.display = 'block';
+        label.textContent = '📍 ' + _selectedLat.toFixed(6) + ', ' + _selectedLng.toFixed(6);
+      }
       closeMapPicker();
     }
   </script>
