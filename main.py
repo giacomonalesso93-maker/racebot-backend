@@ -810,6 +810,17 @@ async def ask_question(
         "je n'ai pas cette information", "no tengo esta información",
     ]
 
+    # Domande fuori contesto (non riguardano affatto la gara, es. "dove sono le pizzerie?").
+    # Non sono lacune del regolamento: non devono inquinare gli insights AI né generare
+    # un ticket all'organizzatore. Vedi SCOPE RULE in chat.py.
+    frasi_fuori_contesto = [
+        "esula dal mio ambito",
+        "outside my scope",
+        "sort de mon champ d'action",
+        "fuera de mi ámbito",
+        "außerhalb meines aufgabenbereichs",
+    ]
+
     # Prepara dizionario posizioni con link per iniezione automatica
     locs_with_links = {}
     for loc in (locs + event_locs):
@@ -861,7 +872,8 @@ async def ask_question(
                             for loc_data in matching:
                                 links_text += f"\\n📍 {loc_data['name']}: {loc_data['url']}"
                             yield f"data: {links_text}\n\n"
-                    answered = not any(f in answer.lower() for f in frasi_non_so)
+                    out_of_scope = any(f in answer.lower() for f in frasi_fuori_contesto)
+                    answered = out_of_scope or not any(f in answer.lower() for f in frasi_non_so)
 
                     # Log domanda
                     supabase.table("questions_log").insert({
