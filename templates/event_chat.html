@@ -35,6 +35,8 @@
     .header-btn { display:none; }
     .header-btn:hover { background:rgba(255,255,255,0.22); }
     #map-btn { display:none; }
+    .header-btn-icon { background:rgba(255,255,255,0.12); border:1px solid rgba(255,255,255,0.2); color:white; width:32px; height:32px; border-radius:50%; font-size:15px; cursor:pointer; display:flex; align-items:center; justify-content:center; transition:background 0.15s, transform 0.1s; }
+    .header-btn-icon:hover { background:rgba(255,255,255,0.22); transform:translateY(-1px); }
 
     /* ── MAP ── */
     #map-panel { display:none; flex-shrink:0; border-bottom:1px solid #e2e8f0; }
@@ -129,6 +131,7 @@
     </div>
     <div class="header-right">
       <span class="header-brand">Repliq</span>
+      <button class="header-btn-icon" onclick="resetChat()" title="Ricomincia chat">↺</button>
       <button class="header-btn" id="map-btn" onclick="toggleMap()">📍 Mappa</button>
     </div>
   </header>
@@ -224,6 +227,29 @@
       messagesEl.appendChild(row);
       messagesEl.scrollTop = messagesEl.scrollHeight;
       return div;
+    }
+
+    function resetChat() {
+      currentRaceId = null;
+      currentRaceName = null;
+      conversationHistory = [];
+      var panel = document.getElementById("map-panel");
+      if (panel) panel.style.display = "none";
+      document.getElementById("map-btn").style.display = "none";
+      input.disabled = true;
+      input.placeholder = "Prima seleziona la tua gara...";
+      input.value = "";
+      sendBtn.disabled = true;
+
+      var racesHtml = {{ races | tojson }}.map(function(r) {
+        return '<button class="race-btn" onclick="selectRace(\'' + r.id + '\', \'' + r.name.replace(/'/g, "\\'") + '\')">🏃 ' + r.name + (r.date ? ' <span style="font-weight:400;font-size:12px;opacity:0.7;">(' + r.date + ')</span>' : '') + '</button>';
+      }).join('');
+
+      messagesEl.innerHTML =
+        '<div class="msg-row"><div class="msg-avatar">' + (EVENT_LOGO ? '<img src="' + EVENT_LOGO + '" style="width:22px;height:22px;object-fit:contain;border-radius:4px;" alt="logo">' : '🏆') + '</div>' +
+        '<div class="msg bot">Ciao! 👋 Benvenuto all\'assistente virtuale di <strong>{{ event.name }}</strong>.<br><br>A quale gara sei iscritto?</div></div>' +
+        '<div class="race-selector-wrap" id="race-selector">' + racesHtml + '</div>';
+      messagesEl.scrollTop = 0;
     }
 
     function selectRace(raceId, raceName) {
