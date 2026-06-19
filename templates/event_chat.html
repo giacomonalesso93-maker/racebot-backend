@@ -92,10 +92,10 @@
     .powered-by span { color:#2563eb; font-weight:700; }
 
     /* ── MODAL ── */
-    .modal-overlay { display:none; position:fixed; inset:0; background:rgba(0,0,0,0.5); backdrop-filter:blur(4px); align-items:flex-end; justify-content:center; z-index:999; }
-    .modal-sheet { background:white; border-radius:24px 24px 0 0; padding:24px 24px 36px; width:100%; max-width:480px; border-top:1px solid #e2e8f0; animation:slideUp 0.25s ease; }
-    @keyframes slideUp { from{transform:translateY(100%);} to{transform:translateY(0);} }
-    .modal-handle { width:36px; height:4px; background:#e2e8f0; border-radius:2px; margin:0 auto 20px; }
+    .modal-overlay { display:none; position:fixed; inset:0; background:rgba(0,0,0,0.5); backdrop-filter:blur(4px); align-items:center; justify-content:center; z-index:999; padding:16px; box-sizing:border-box; }
+    .modal-sheet { background:white; border-radius:20px; padding:24px; width:100%; max-width:420px; max-height:90vh; overflow-y:auto; box-sizing:border-box; animation:popIn 0.2s ease; }
+    @keyframes popIn { from{transform:scale(0.95); opacity:0;} to{transform:scale(1); opacity:1;} }
+    .modal-handle { display:none; }
     .modal-sheet h3 { font-size:16px; font-weight:800; color:#0f172a; margin-bottom:6px; }
     .modal-sheet p { font-size:13px; color:#64748b; margin-bottom:16px; line-height:1.5; }
     .modal-sheet input { width:100%; padding:12px 14px; background:#f8fafc; border:1.5px solid #e2e8f0; border-radius:12px; font-size:14px; outline:none; color:#0f172a; margin-bottom:12px; }
