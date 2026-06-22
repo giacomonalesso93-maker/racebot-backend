@@ -517,6 +517,8 @@ async def import_from_url(
     organizer = get_current_organizer(session) if session else None
     if not organizer:
         raise HTTPException(status_code=401, detail="Non autenticato")
+    if not organizer.get("url_import_enabled"):
+        raise HTTPException(status_code=403, detail="La funzione 'Importa da URL' non è attiva sul tuo account. Contatta l'organizzazione.")
 
     # 1. Scarica la pagina
     try:
@@ -2361,6 +2363,19 @@ def admin_update_organizer(
         "admin_notes": admin_notes or None,
     }).eq("id", organizer_id).execute()
     return RedirectResponse(url="/admin?ok=Organizzatore+aggiornato", status_code=303)
+
+
+@app.post("/admin/organizers/{organizer_id}/toggle-url-import")
+def admin_toggle_url_import(organizer_id: str, admin_session: str = Cookie(default=None)):
+    if not _admin_token_valid(admin_session):
+        raise HTTPException(status_code=403, detail="Non autorizzato")
+    org = supabase.table("organizers").select("url_import_enabled").eq("id", organizer_id).execute().data
+    if not org:
+        raise HTTPException(status_code=404, detail="Organizzatore non trovato")
+    new_value = not bool(org[0].get("url_import_enabled"))
+    supabase.table("organizers").update({"url_import_enabled": new_value}).eq("id", organizer_id).execute()
+    msg = "Import+URL+attivato" if new_value else "Import+URL+disattivato"
+    return RedirectResponse(url=f"/admin?ok={msg}", status_code=303)
 
 
 @app.post("/admin/organizers/{organizer_id}/approve")

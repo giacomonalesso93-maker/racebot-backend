@@ -209,10 +209,18 @@
             {{ org.admin_notes or "—" }}
           </td>
           <td>
-            <button class="plan-badge" style="background:#f1f5f9; color:#334155; border:none; cursor:pointer; padding:5px 12px;"
-              onclick="openEdit('{{ org.id }}', '{{ (org.name or org.email)|replace("'","\\'") }}', '{{ org.plan or "single" }}', '{{ (org.plan_expires_at or "")[:10] }}', {{ org.admin_notes | tojson }})">
-              ✏️ Modifica
-            </button>
+            <div style="display:flex; gap:6px; align-items:center; flex-wrap:wrap;">
+              <button class="plan-badge" style="background:#f1f5f9; color:#334155; border:none; cursor:pointer; padding:5px 12px;"
+                onclick="openEdit('{{ org.id }}', '{{ (org.name or org.email)|replace("'","\\'") }}', '{{ org.plan or "single" }}', '{{ (org.plan_expires_at or "")[:10] }}', {{ org.admin_notes | tojson }})">
+                ✏️ Modifica
+              </button>
+              <form method="POST" action="/admin/organizers/{{ org.id }}/toggle-url-import" style="display:inline;">
+                <button type="submit" class="plan-badge" title="Abilita/disabilita import gara da URL"
+                  style="border:none; cursor:pointer; padding:5px 12px; {% if org.url_import_enabled %}background:#dcfce7; color:#166534;{% else %}background:#fee2e2; color:#b91c1c;{% endif %}">
+                  🔗 URL {% if org.url_import_enabled %}ON{% else %}OFF{% endif %}
+                </button>
+              </form>
+            </div>
           </td>
         </tr>
         {% endfor %}
