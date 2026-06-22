@@ -211,7 +211,12 @@
           <td>
             <div style="display:flex; gap:6px; align-items:center; flex-wrap:wrap;">
               <button class="plan-badge" style="background:#f1f5f9; color:#334155; border:none; cursor:pointer; padding:5px 12px;"
-                onclick="openEdit('{{ org.id }}', '{{ (org.name or org.email)|replace("'","\\'") }}', '{{ org.plan or "single" }}', '{{ (org.plan_expires_at or "")[:10] }}', {{ org.admin_notes | tojson }})">
+                data-id="{{ org.id }}"
+                data-name="{{ org.name or org.email }}"
+                data-plan="{{ org.plan or 'single' }}"
+                data-expiry="{{ (org.plan_expires_at or '')[:10] }}"
+                data-notes="{{ org.admin_notes or '' }}"
+                onclick="openEditBtn(this)">
                 ✏️ Modifica
               </button>
               <form method="POST" action="/admin/organizers/{{ org.id }}/toggle-url-import" style="display:inline;">
@@ -255,6 +260,9 @@
 </div>
 
 <script>
+  function openEditBtn(btn) {
+    openEdit(btn.dataset.id, btn.dataset.name, btn.dataset.plan, btn.dataset.expiry, btn.dataset.notes);
+  }
   function openEdit(id, name, plan, expiry, notes) {
     document.getElementById("edit-org-name").textContent = name;
     document.getElementById("edit-form").action = `/admin/organizers/${id}/update`;
